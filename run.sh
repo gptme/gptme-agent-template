@@ -5,12 +5,17 @@ JOURNAL=journal/$(ls -t journal/ | head -n 1)
 
 # Parse arguments
 DRY_RUN=false
+INTERACTIVE=true
 PROMPT="continue\n\nHere is today's journal: $JOURNAL"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --dry-run)
             DRY_RUN=true
+            shift
+            ;;
+        --non-interactive)
+            INTERACTIVE=false
             shift
             ;;
         *)
@@ -54,6 +59,10 @@ if [ "$DRY_RUN" = true ]; then
     # In dry-run mode, just print the prompts
     echo -e "$PROMPT\n\n$FULL_PROMPT"
 else
-    # Normal mode: run gptme without printing prompts
-    gptme "$PROMPT" "$FULL_PROMPT"
+    # Normal mode: run gptme with or without interactive mode
+    if [ "$INTERACTIVE" = false ]; then
+        gptme --non-interactive "$PROMPT" "$FULL_PROMPT"
+    else
+        gptme "$PROMPT" "$FULL_PROMPT"
+    fi
 fi
