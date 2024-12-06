@@ -182,11 +182,9 @@ command -v pre-commit > /dev/null && (cd "${TARGET_DIR}" && pre-commit install)
 # Dry run the agent to check for errors
 (cd "${TARGET_DIR}" && ./run.sh --dry-run > /dev/null)
 
-TARGET_DIR_RELATIVE="./$(realpath --relative-to=$(pwd) ${TARGET_DIR})"
-
 echo "
 Agent workspace created successfully! Next steps:
-1. cd ${TARGET_DIR_RELATIVE}
+1. cd ${TARGET_DIR}
 2. Start the agent with: ./run.sh
 3. The agent will guide you through the setup interview
 4. Follow the agent's instructions to establish its identity
