@@ -182,9 +182,12 @@ command -v pre-commit > /dev/null && (cd "${TARGET_DIR}" && pre-commit install)
 # Dry run the agent to check for errors
 (cd "${TARGET_DIR}" && ./run.sh --dry-run > /dev/null)
 
+# Make the target directory relative to the current directory (prettier output)
+TARGET_DIR_RELATIVE=$(python3 -c "import os, sys; print(os.path.relpath('${TARGET_DIR}', start='$(pwd)'))")
+
 echo "
 Agent workspace created successfully! Next steps:
-1. cd ${TARGET_DIR}
+1. cd ${TARGET_DIR_RELATIVE}
 2. Start the agent with: ./run.sh
 3. The agent will guide you through the setup interview
 4. Follow the agent's instructions to establish its identity
