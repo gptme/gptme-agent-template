@@ -73,7 +73,7 @@ The task system is designed to help track and manage work effectively across ses
 
 1. **Creation**
    - Create new task file in tasks/all/
-   - Add symlink in tasks/new/: `ln -s ../all/taskname.md tasks/new/`
+   - Add symlink in tasks/new/: `ln -s all/taskname.md tasks/new/`
    - Add to TASKS.md with 🆕 status
    - CURRENT_TASK.md remains linked to no-active-task.md
 
