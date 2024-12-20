@@ -83,8 +83,8 @@ def verify_links(file_path: Path, links: list[tuple[str, str]]) -> list[str]:
     errors = []
     repo_root = find_repo_root(file_path)
 
-    # Skip example files
-    if "examples" in str(file_path):
+    # Skip example and template files
+    if "examples" in str(file_path) or "templates" in str(file_path):
         return []
 
     for _link_text, link_path in links:
