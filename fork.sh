@@ -93,7 +93,6 @@ copy_file */templates/*.md
 copy_file tasks/templates/initial-agent-setup.md
 cp "${SOURCE_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
 ln -sf "../initial-agent-setup.md" "${TARGET_DIR}/tasks/active/"
-ln -sf "./tasks/initial-agent-setup.md" "${TARGET_DIR}/CURRENT_TASK.md"
 
 # Create projects README
 cat > "${TARGET_DIR}/projects/README.md" << EOL
@@ -144,7 +143,6 @@ files = [
   "ARCHITECTURE.md",
   "ABOUT.md",
   "TASKS.md",
-  "CURRENT_TASK.md",
   "projects/README.md",
   "gptme.toml"
 ]

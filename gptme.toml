@@ -3,7 +3,6 @@ files = [
   "ARCHITECTURE.md",
   "ABOUT.md",
   "TASKS.md",
-  "CURRENT_TASK.md",
   "projects/README.md",
   "gptme.toml"
 ]
