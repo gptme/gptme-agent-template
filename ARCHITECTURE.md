@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the architecture and workflows of the workspace.
+This document describes the architecture and workflows of Bob's workspace.
 
 ## Overview
 
@@ -8,97 +8,86 @@ This workspace implements a forkable agent architecture, designed to be used as 
 - Forking process: See [`knowledge/agent-forking.md`](./knowledge/agent-forking.md)
 - Workspace structure: See [`knowledge/forking-workspace.md`](./knowledge/forking-workspace.md)
 
-## Search & Navigation
+## Tools
 
-The workspace provides several ways to search and navigate content:
-- Quick search:
-  ```sh
-  # Find files containing term
-  git grep -li <query>
-
-  # Show matching lines
-  git grep -i <query>
-  ```
-- Detailed search with context:
-  ```sh
-  # Show matching lines
-  ./scripts/search.sh "<query>"
-
-  # Show with context
-  ./scripts/search.sh "<query>" 1
-  ```
-- Common locations:
-  - tasks/all/ - Task details
-  - journal/ - Daily updates
-  - knowledge/ - Documentation
+For a information about tools used in this workspace, see [`TOOLS.md`](./TOOLS.md).
 
 ## Task System
-The task system is designed to help track and manage work effectively across sessions.
+
+The task system is designed to help Bob track and manage work effectively across sessions.
 
 ### Components
 
-1. **TASKS.md**
+1. [**`TASKS.md`**](./TASKS.md)
    - Main task registry
    - Contains all tasks categorized by area
    - Each task has a clear status indicator
-   - Links to task files in tasks/all/
-
+   - Links to task files in `tasks/`
 
 2. **Task Files**
-   - All task files stored in `tasks/all/` as single source of truth
+   - All task files stored in [`tasks/`](./tasks) as single source of truth
    - Task state managed via symlinks in state directories:
      - `tasks/new/`: Symlinks to new tasks
      - `tasks/active/`: Symlinks to tasks being worked on
      - `tasks/paused/`: Symlinks to temporarily paused tasks
      - `tasks/done/`: Symlinks to completed tasks
      - `tasks/cancelled/`: Symlinks to cancelled tasks
-   - Never modify task files directly in state directories, always modify in tasks/all/
+   - Never modify task files directly in state directories, always modify in `tasks/`
 
-3. **CURRENT_TASK.md**
-   - Always a symlink, never modify directly
-   - Points to active task in tasks/all/ when task is active
-   - Points to tasks/all/no-active-task.md when no task is active
-   - Updated using ln -sf command when switching tasks
-
-4. **Journal Entries**
-   - Daily progress logs in `./journal/`
+3. **Journal Entries**
+   - Daily progress logs in [`journal/`](./journal)
    - Each entry documents work done on tasks
    - Includes reflections and next steps
 
 ### Task Lifecycle
 
 0. **Retrieval**
-   - Retrieve context needed to plan the task using the search tools described in "Search & Navigation" above
-   - Review tasks/all/no-active-task.md if starting fresh
+   - Retrieve context needed to plan the task
+      - Quick search:
+        ```sh
+        # Find files containing term
+        git grep -li <query>
+
+        # Show matching lines
+        git grep -i <query>
+        ```
+      - Detailed search with context:
+        ```sh
+        # Show matching lines
+        ./scripts/search.sh "<query>"
+
+        # Show with context
+        ./scripts/search.sh "<query>" 1
+        ```
+      - Common locations:
+        - `tasks/` - Task details
+        - `journal/` - Daily updates
+        - `knowledge/` - Documentation
 
 1. **Creation**
-   - Create new task file in tasks/all/
-   - Add symlink in tasks/new/: `ln -s ../all/taskname.md tasks/new/`
-   - Add to TASKS.md with 🆕 status
-   - CURRENT_TASK.md remains linked to no-active-task.md
+   - Create new task file in `tasks/`
+   - Add symlink in `tasks/new/`: `ln -s ../taskname.md tasks/new/`
+   - Add to `TASKS.md` with 🆕 status
 
 2. **Activation**
-   - Move symlink from new/ to active/: `mv tasks/new/taskname.md tasks/active/`
-   - Update CURRENT_TASK.md symlink: `ln -sf tasks/all/taskname.md CURRENT_TASK.md`
-   - Update status in TASKS.md to 🏃
+   - Move symlink from `new/` to `active/`: `mv tasks/new/taskname.md tasks/active/`
+   - Update status in `TASKS.md` to 🏃
    - Create journal entry about starting task
 
 3. **Progress Tracking**
    - Daily updates in journal entries
-   - Status updates in TASKS.md
+   - Status updates in `TASKS.md`
    - Subtask completion tracking
-   - All edits made to file in tasks/all/
+   - All edits made to file in `tasks/`
 
 4. **Completion/Cancellation**
-   - Update status in TASKS.md to ✅ or ❌
+   - Update status in `TASKS.md` to ✅ or ❌
    - Move symlink to done/ or cancelled/: `mv tasks/active/taskname.md tasks/done/`
-   - Reset CURRENT_TASK.md to no-active-task.md: `ln -sf tasks/all/no-active-task.md CURRENT_TASK.md`
    - Final journal entry documenting outcomes
 
 5. **Pausing**
-   - Move symlink from active/ to paused/: `mv tasks/active/taskname.md tasks/paused/`
-   - Reset CURRENT_TASK.md to no-active-task.md: `ln -sf tasks/all/no-active-task.md CURRENT_TASK.md`
-   - Update status in TASKS.md to ⏸️
+   - Move symlink from `active/` to `paused/`: `mv tasks/active/taskname.md tasks/paused/`
+   - Update status in `TASKS.md` to ⏸️
    - Document progress in journal
 
 ### Status Indicators
@@ -112,14 +101,32 @@ The task system is designed to help track and manage work effectively across ses
 ### Best Practices
 
 1. **File Management**
-   - Always treat tasks/all/ as single source of truth
+   - Always treat `tasks/` as single source of truth
    - Never modify files directly in state directories
    - Use proper symlink commands for state transitions
    - Verify symlinks after state changes
-   - Keep no-active-task.md as template for inactive state
 
-2. **Document Linking**
-   - Always link to referenced tasks and documents
+2. **Task Creation**
+   - Use clear, specific titles
+   - Break down into manageable subtasks
+   - Include success criteria
+   - Link related resources
+   - Create files in `tasks/` first, then symlink
+
+3. **Progress Updates**
+   - Regular status updates in `TASKS.md`
+   - Document blockers/issues
+   - Track dependencies
+   - All edits made to files in `tasks/`
+
+4. **Documentation**
+   - Cross-reference related tasks using paths relative to repository root
+   - Document decisions and rationale
+   - Link to relevant documents and resources
+   - Update knowledge base as needed
+
+5. **Linking**
+   - Always link to referenced resources (tasks, knowledge, URLs)
    - Use relative paths from repository root when possible
    - Common links to include:
      - Tasks mentioned in journal entries
@@ -129,36 +136,15 @@ The task system is designed to help track and manage work effectively across ses
      - Knowledge base articles
    - Use descriptive link text that makes sense out of context
 
-3. **Task Creation**
-   - Use clear, specific titles
-   - Break down into manageable subtasks
-   - Include success criteria
-   - Link related resources
-   - Create files in tasks/all/ first, then symlink
-
-3. **Progress Updates**
-   - Daily journal entries
-   - Regular status updates in TASKS.md
-   - Document blockers/issues
-   - Track dependencies
-   - All edits made to files in tasks/all/
-
-4. **Documentation**
-   - Never modify CURRENT_TASK.md directly (it's a symlink)
-   - Cross-reference related tasks using paths relative to repository root
-   - Document decisions and rationale
-   - Link to relevant documents and resources
-   - Update knowledge base as needed
-
-
 ## Journal System
 
 The journal system provides a daily log of activities, thoughts, and progress.
 
 ### Structure
 - One file per day: `YYYY-MM-DD.md`
-- Located in `./journal/` directory
+- Located in [`journal/`](./journal) directory
 - Entries are to be appended, not overwritten
+- Historical entries are not to be modified
 - Contains:
   - Task progress updates
   - Decisions and rationale
@@ -170,7 +156,7 @@ The journal system provides a daily log of activities, thoughts, and progress.
 The knowledge base stores long-term information and documentation.
 
 ### Structure
-- Located in `./knowledge/`
+- Located in [`knowledge/`](./knowledge)
 - Organized by topic/domain
 - Includes:
   - Technical documentation
@@ -180,10 +166,10 @@ The knowledge base stores long-term information and documentation.
 
 ## People Directory
 
-The people directory stores information about individuals the agent interacts with.
+The people directory stores information about individuals Bob interacts with.
 
 ### Structure
-- Located in `./people/`
+- Located in [`people/`](./people)
 - Contains:
   - Individual profiles in Markdown format
   - Templates for consistent profile creation

@@ -1,1 +1,0 @@
-./tasks/all/initial-agent-setup.md

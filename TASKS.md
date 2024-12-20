@@ -3,7 +3,7 @@
 Active tasks and their current status.
 
 ## Current Task
-- 🏃 [Initial Agent Setup](./tasks/all/initial-agent-setup.md)
+- 🏃 [Initial Agent Setup](./tasks/initial-agent-setup.md)
 
 ## System Development
 - 🏃 Complete initial setup

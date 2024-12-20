@@ -1,5 +1,6 @@
 .PHONY: precommit format
 
+# to fix `git grep` for users with PAGER set
 PAGER=cat
 
 install:

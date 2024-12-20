@@ -1,1 +1,1 @@
-../all/initial-agent-setup.md
+../initial-agent-setup.md

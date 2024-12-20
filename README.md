@@ -48,7 +48,6 @@ Then simply follow the instructions in the output.
 ## Workspace Structure
 
  - gptme-agent keeps track of tasks in [`TASKS.md`](./TASKS.md)
- - gptme-agent writes about the current task in [`CURRENT_TASK.md`](./CURRENT_TASK.md)
  - gptme-agent keeps a journal in [`./journal/`](./journal/)
  - gptme-agent keeps a knowledge base in [`./knowledge/`](./knowledge/)
  - gptme-agent maintains profiles of people in [`./people/`](./people/)
