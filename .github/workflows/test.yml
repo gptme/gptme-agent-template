@@ -27,6 +27,9 @@ jobs:
 
     - name: Test fork.sh script
       run: |
+        # Create required directories
+        mkdir -p journal tasks/{active,done,new,paused,cancelled}
+
         # Test basic usage (script will do its own validation)
         ./fork.sh test-agent
-        ./fork.sh alice-agent Alice
+        ./fork.sh test-agent-named TestAgent
