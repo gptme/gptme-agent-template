@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the architecture and workflows of Bob's workspace.
+This document describes the architecture and workflows of the workspace.
 
 ## Overview
 
