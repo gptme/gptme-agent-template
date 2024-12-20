@@ -13,7 +13,6 @@ This document describes what remains and what gets cleared when forking an agent
 ├── gptme.toml            # Config file (template remains, paths updated)
 ├── tasks/                # Task management (structure remains, content cleared)
 │   ├── active/          # Current tasks
-│   ├── all/            # Source of truth
 │   ├── done/           # Completed tasks
 │   └── ...             # Other task states
 ├── journal/             # Daily logs (cleared)

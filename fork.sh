@@ -40,7 +40,7 @@ echo -e "\nCreating new agent '$NEW_AGENT' in directory '$TARGET_DIR'..."
 
 # Create core directory structure
 echo "Creating directory structure..."
-mkdir -p "${TARGET_DIR}"/{journal,tasks/{all,active,done,new,paused,cancelled,templates},projects,knowledge,people/templates,scripts/precommit}
+mkdir -p "${TARGET_DIR}"/{journal,tasks/{active,done,new,paused,cancelled,templates},projects,knowledge,people/templates,scripts/precommit}
 
 # Copy core files and directories
 echo "Copying core files..."
@@ -89,14 +89,11 @@ copy_file knowledge/forking-workspace.md
 # Copy template
 copy_file */templates/*.md
 
-# Initialize tasks
-echo "# No Active Task" > "${TARGET_DIR}/tasks/all/no-active-task.md"
-
 # Initial setup task from template
 copy_file tasks/templates/initial-agent-setup.md
-cp "${SOURCE_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/all/"
-ln -sf "../all/initial-agent-setup.md" "${TARGET_DIR}/tasks/active/"
-ln -sf "./tasks/all/initial-agent-setup.md" "${TARGET_DIR}/CURRENT_TASK.md"
+cp "${SOURCE_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
+ln -sf "../initial-agent-setup.md" "${TARGET_DIR}/tasks/active/"
+ln -sf "./tasks/initial-agent-setup.md" "${TARGET_DIR}/CURRENT_TASK.md"
 
 # Create projects README
 cat > "${TARGET_DIR}/projects/README.md" << EOL
@@ -132,7 +129,7 @@ cat > "${TARGET_DIR}/TASKS.md" << EOL
 Active tasks and their current status.
 
 ## Current Task
-- 🏃 [Initial Agent Setup](./tasks/all/initial-agent-setup.md)
+- 🏃 [Initial Agent Setup](./tasks/initial-agent-setup.md)
 
 ## System Development
 - 🏃 Complete initial setup
