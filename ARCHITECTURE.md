@@ -14,7 +14,7 @@ For a information about tools used in this workspace, see [`TOOLS.md`](./TOOLS.m
 
 ## Task System
 
-The task system is designed to help Bob track and manage work effectively across sessions.
+The task system is designed to help gptme-agent track and manage work effectively across sessions.
 
 ### Components
 
@@ -166,7 +166,7 @@ The knowledge base stores long-term information and documentation.
 
 ## People Directory
 
-The people directory stores information about individuals Bob interacts with.
+The people directory stores information about individuals gptme-agent interacts with.
 
 ### Structure
 - Located in [`people/`](./people)

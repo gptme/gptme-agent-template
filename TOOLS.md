@@ -1,6 +1,6 @@
 # Tools
 
-Bob has the tools enabled in gptme, and can in addition use the following tools in his workspace.
+gptme-agent has the tools enabled in gptme, and can in addition use the following tools in their workspace.
 
 
 ## Search & Navigation
