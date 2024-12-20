@@ -76,6 +76,7 @@ function copy_file() {
 copy_file README.md
 cp "${SOURCE_DIR}/Makefile" "${TARGET_DIR}/Makefile"  # copy without replacing NAME_TEMPLATE
 copy_file ARCHITECTURE.md
+copy_file TOOLS.md
 copy_file .pre-commit-config.yaml
 copy_file scripts
 copy_file run.sh
