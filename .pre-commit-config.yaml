@@ -1,44 +1,55 @@
 repos:
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v5.0.0
-  hooks:
-  - id: check-yaml
-  - id: end-of-file-fixer
-  - id: trailing-whitespace
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.6.9
-  hooks:
-  - id: ruff
-    args: [ --fix ]
-  - id: ruff-format
-- repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.12.0
-  hooks:
-  - id: mypy
-    additional_dependencies: [types-tabulate, types-docutils]
-    args: [--ignore-missing-imports, --check-untyped-defs]
-- repo: local
-  hooks:
-  - id: check-names
-    name: Check for agent-instance names
-    description: Verifies that we are not accidentally using names of agents in the template, or vice versa
-    entry: make check-names
-    language: system
-    pass_filenames: false
-    always_run: true
-  - id: check-markdown-links
-    name: Check markdown links
-    description: Verifies all relative links in markdown files resolve correctly
-    entry: python3 scripts/precommit/check_markdown_links.py
-    language: system
-    types: [markdown]
-    pass_filenames: true
-    # Exclude example files which intentionally have broken links
-    exclude: ^projects/.*/examples/.*$
-  - id: check-task-links
-    name: Check task symlinks
-    description: Verifies task files have exactly one valid symlink in a state directory
-    entry: python3 scripts/precommit/check_task_links.py --type tasks
-    language: system
-    pass_filenames: false
-    always_run: true
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.12.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-tabulate, types-docutils]
+        args: [--ignore-missing-imports, --check-untyped-defs]
+  - repo: local
+    hooks:
+      - id: check-names
+        name: Check for agent-instance names
+        description: Verifies that we are not accidentally using names of agents in the template, or vice versa
+        entry: make check-names
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: check-markdown-links
+        name: Check markdown links
+        description: Verifies all relative links in markdown files resolve correctly
+        entry: python3 scripts/precommit/check_markdown_links.py
+        language: system
+        types: [markdown]
+        pass_filenames: true
+        # Exclude example files which intentionally have broken links
+        exclude: ^projects/.*/examples/.*$
+      - id: validate-task-frontmatter
+        name: Validate task frontmatter
+        description: Validates YAML frontmatter in task files
+        entry: ./scripts/precommit/validate_task_frontmatter.py
+        language: system
+        types: [markdown]
+        files: ^tasks/.*\.md$
+
+      # redundant? already validated by validate-task-frontmatter?
+      # should combine them
+      - id: validate-tasks
+        name: Validate task metadata
+        description: Validates YAML frontmatter in task files
+        entry: ./scripts/tasks.py check
+        language: system
+        types: [markdown]
+        pass_filenames: false
+        #files: ^tasks/.*\.md$

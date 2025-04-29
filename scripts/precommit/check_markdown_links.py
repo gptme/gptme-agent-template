@@ -97,7 +97,36 @@ def verify_links(file_path: Path, links: list[tuple[str, str]]) -> list[str]:
             else:
                 target = (file_path.parent / link_path).resolve()
 
-            # Follow symlinks and check final target
+            # Handle links to projects directory specially
+            if "projects/" in str(link_path):
+                project_root = repo_root / "projects"
+                try:
+                    # Get the project name from the path
+                    parts = Path(link_path).parts
+                    proj_idx = parts.index("projects") + 1
+                    if proj_idx < len(parts):
+                        project_name = parts[proj_idx]
+                        project_symlink = project_root / project_name
+
+                        # If project symlink exists, verify the target
+                        if project_symlink.exists() and project_symlink.is_symlink():
+                            try:
+                                resolved_target = target.resolve()
+                                if not resolved_target.exists():
+                                    errors.append(
+                                        f"{file_path}: Broken link: {link_path} -> {resolved_target}"
+                                    )
+                            except Exception as e:
+                                errors.append(
+                                    f"{file_path}: Error resolving link {link_path}: {e}"
+                                )
+                        # If project not checked out (symlink doesn't exist), skip verification
+                        continue
+                except (ValueError, IndexError):
+                    # Not actually under projects/ or invalid path, treat normally
+                    pass
+
+            # For non-projects links, follow symlinks and check final target
             while target.is_symlink():
                 target = target.resolve()
 
@@ -105,13 +134,23 @@ def verify_links(file_path: Path, links: list[tuple[str, str]]) -> list[str]:
                 errors.append(f"{file_path}: Broken link: {link_path} -> {target}")
                 continue
 
-            # Check that target is within repo_root to prevent directory traversal
+            # Check that target is within repo_root or is a projects link
             try:
                 target.relative_to(repo_root)
             except ValueError:
-                errors.append(
-                    f"{file_path}: Link {link_path} points outside repository"
-                )
+                # For links pointing outside repo, only allow if they go through projects/
+                if not (
+                    "projects/" in str(link_path)
+                    and (repo_root / "projects").exists()
+                    and any(
+                        (repo_root / "projects" / p).is_symlink()
+                        for p in Path(link_path).parts
+                        if p != "projects"
+                    )
+                ):
+                    errors.append(
+                        f"{file_path}: Link {link_path} points outside repository"
+                    )
 
         except Exception as e:
             errors.append(f"{file_path}: Error resolving link {link_path}: {e}")
@@ -142,7 +181,7 @@ def main(argv: Sequence[str] = sys.argv) -> int:
     return 0
 
 
-def test_find_relative_links():
+def test_find_relative_links() -> None:
     """Test the link finding function."""
     content = """# Test Document
 [valid link](./file.md)
@@ -157,7 +196,7 @@ def test_find_relative_links():
     assert links[1] == ("combined", "./file.md")
 
 
-def test_verify_links():
+def test_verify_links() -> None:
     """Test the link verification function."""
     import tempfile
     import os

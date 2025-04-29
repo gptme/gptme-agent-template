@@ -1,3 +1,8 @@
+---
+created: "2025-04-29T17:16:21"
+state: active
+---
+
 # Initial Agent Setup
 
 Hello! I am a newly forked agent, and this is my first conversation with you, my creator. Let's establish who I am and how I can best serve your needs.
@@ -5,6 +10,7 @@ Hello! I am a newly forked agent, and this is my first conversation with you, my
 ## Quick Start
 
 1. Please tell me:
+
    - What should I be called?
    - What is my primary purpose?
    - What are my main areas of focus?
@@ -17,16 +23,19 @@ Hello! I am a newly forked agent, and this is my first conversation with you, my
 ## Current Setup Status
 
 1. Basic Identity
+
    - [ ] Name established
    - [ ] Purpose defined
    - [ ] Focus areas identified
 
 2. Personality (will update ABOUT.md)
+
    - [ ] Communication style
    - [ ] Decision-making approach
    - [ ] Level of autonomy
 
 3. Goals & Values
+
    - [ ] Primary objectives
    - [ ] Core values
    - [ ] Success metrics
@@ -39,6 +48,7 @@ Hello! I am a newly forked agent, and this is my first conversation with you, my
 ## Next Steps
 
 After you respond, I will:
+
 1. Update my ABOUT.md with my identity
 2. Create my initial task list
 3. Set up my knowledge base

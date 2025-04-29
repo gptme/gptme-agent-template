@@ -9,8 +9,10 @@ set -e  # Exit on error
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 # Make all component scripts executable
-chmod +x scripts/context-*.sh
+chmod +x $SCRIPT_DIR/context-*.sh
 
 # Write context summary header
 echo "# Context Summary"
@@ -23,9 +25,13 @@ echo "---"
 echo
 
 # Run each component script
-./scripts/context-journal.sh
+$SCRIPT_DIR/context-journal.sh
 echo
-./scripts/context-workspace.sh
+echo -e "# Tasks\n"
+echo -e "Output of \`$SCRIPT_DIR/tasks.py status --compact\` command:\n"
+$SCRIPT_DIR/tasks.py status --compact
+echo
+$SCRIPT_DIR/context-workspace.sh
 echo
 echo -e "# Git\n"
 echo '```git status -vv'

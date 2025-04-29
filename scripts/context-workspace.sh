@@ -9,6 +9,10 @@ set -e  # Exit on error
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AGENT_DIR=$(dirname "$SCRIPT_DIR")
+pushd "$AGENT_DIR" > /dev/null
+
 # Add workspace structure section
 echo -e "# Workspace structure\n"
 
@@ -21,7 +25,7 @@ TREE_KNOWLEDGE="$(LANG=C tree -a --dirsfirst --noreport ./knowledge)"
 TREE_PEOPLE="$(LANG=C tree -a --dirsfirst --noreport ./people)"
 
 cat << EOF
-\`\`\`tree
+\`\`\`tree $AGENT_DIR
 $TREE_HARNESS
 $TREE_TASKS
 $TREE_PROJECTS
@@ -30,3 +34,5 @@ $TREE_KNOWLEDGE
 $TREE_PEOPLE
 \`\`\`
 EOF
+
+popd > /dev/null

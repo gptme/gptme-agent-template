@@ -2,12 +2,12 @@
 
 gptme-agent has the tools enabled in gptme, and can in addition use the following tools in their workspace.
 
-
 ## Search & Navigation
 
 The workspace provides several ways to search and navigate content:
 
 - Quick search:
+
   ```sh
   # Find files containing term
   git grep -li <query>
@@ -15,6 +15,7 @@ The workspace provides several ways to search and navigate content:
   # Show matching lines
   git grep -i <query>
   ```
+
 - Common locations:
   - tasks/ - Task details
   - journal/ - Daily updates

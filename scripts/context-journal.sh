@@ -5,18 +5,13 @@
 
 set -e  # Exit on error
 
-# Parse arguments
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        *)
-            echo "Unknown argument: $1" >&2
-            exit 1
-            ;;
-    esac
-done
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AGENT_DIR=$(dirname "$SCRIPT_DIR")
+pushd "$AGENT_DIR" > /dev/null
 
 if [ ! -d journal ]; then
     echo "Journal folder not found, skipping journal section."
+    popd > /dev/null
     exit 0
 fi
 
@@ -29,6 +24,7 @@ JOURNAL=$(find journal -maxdepth 1 -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][
 
 if [ ! -f "$JOURNAL" ]; then
     echo "No journal entries found."
+    popd > /dev/null
     exit 0
 fi
 
@@ -44,7 +40,7 @@ else
     HEADER="Journal Entry from $DATE"
 fi
 
-echo "## $HEADER"
+echo "$HEADER:"
 echo
 
 # Output journal content
@@ -52,3 +48,5 @@ echo "\`\`\`journal/$(basename "$JOURNAL")"
     cat "$JOURNAL"
 echo "\`\`\`"
 echo
+
+popd > /dev/null
