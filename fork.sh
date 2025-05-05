@@ -85,7 +85,6 @@ copy_file .gitignore
 # Copy base knowledge
 copy_file knowledge/agent-forking.md
 copy_file knowledge/forking-workspace.md
-copy_file knowledge/task-management.md
 
 # Copy template
 copy_file */templates/*.md

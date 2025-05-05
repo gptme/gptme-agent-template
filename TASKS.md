@@ -12,8 +12,6 @@ The system provides:
 
 All task details are maintained as individual Markdown files under `./tasks/`.
 
-See [Task Management System](./knowledge/task-management.md) for a complete overview of the task management system.
-
 ## Task CLI Usage
 
 The task system provides a CLI for managing tasks:
