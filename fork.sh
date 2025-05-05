@@ -100,8 +100,9 @@ copy_file TOOLS.md
 copy_file TASKS.md
 
 # Initial setup task from template
-copy_file tasks/initial-agent-setup.md
-
+copy_file tasks/templates/initial-agent-setup.md
+cp "${SOURCE_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
+./scripts/tasks.py edit initial-agent-setup --set created $(date --iso-8601=second)
 
 # Create projects README
 cat > "${TARGET_DIR}/projects/README.md" << EOL
