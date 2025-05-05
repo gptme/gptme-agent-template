@@ -81,6 +81,7 @@ copy_file scripts
 copy_file run.sh
 copy_file fork.sh
 copy_file .gitignore
+copy_file .gitmodules
 
 # Copy base knowledge
 copy_file knowledge/agent-forking.md
@@ -166,6 +167,9 @@ EOL
 
 # Initialize git
 (cd "${TARGET_DIR}" && git init)
+
+# Clone the gptme-contrib submodule
+(cd "${TARGET_DIR}" && git submodule add https://github.com/gptme/gptme-contrib.git gptme-contrib)
 
 # If pre-commit is installed
 # Install pre-commit hooks
