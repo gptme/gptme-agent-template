@@ -40,7 +40,7 @@ echo -e "\nCreating new agent '$NEW_AGENT' in directory '$TARGET_DIR'..."
 
 # Create core directory structure
 echo "Creating directory structure..."
-mkdir -p "${TARGET_DIR}"/{journal,tasks/{active,done,new,paused,cancelled,templates},projects,knowledge,people/templates,scripts/precommit}
+mkdir -p "${TARGET_DIR}"/{journal,tasks,projects,knowledge,people/templates,scripts/precommit}
 
 # Copy core files and directories
 echo "Copying core files..."
@@ -76,11 +76,12 @@ function copy_file() {
 copy_file README.md
 cp "${SOURCE_DIR}/Makefile" "${TARGET_DIR}/Makefile"  # copy without replacing NAME_TEMPLATE
 copy_file ARCHITECTURE.md
-copy_file TOOLS.md
 copy_file .pre-commit-config.yaml
 copy_file scripts
 copy_file run.sh
 copy_file fork.sh
+copy_file .gitignore
+copy_file .gitmodules
 
 # Copy base knowledge
 copy_file knowledge/agent-forking.md
@@ -89,10 +90,20 @@ copy_file knowledge/forking-workspace.md
 # Copy template
 copy_file */templates/*.md
 
+# Copy lessons
+copy_file lessons/README.md
+copy_file lessons/tools/shell-heredoc.md
+
+# Copy tools
+copy_file TOOLS.md
+
+# Copy tasks
+copy_file TASKS.md
+
 # Initial setup task from template
 copy_file tasks/templates/initial-agent-setup.md
 cp "${SOURCE_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
-ln -sf "../initial-agent-setup.md" "${TARGET_DIR}/tasks/active/"
+./scripts/tasks.py edit initial-agent-setup --set created $(date --iso-8601=second)
 
 # Create projects README
 cat > "${TARGET_DIR}/projects/README.md" << EOL
@@ -121,21 +132,6 @@ cat > "${TARGET_DIR}/ABOUT.md" << EOL
 [Core values and principles]
 EOL
 
-# Create initial TASKS.md with setup as first task
-cat > "${TARGET_DIR}/TASKS.md" << EOL
-# Tasks
-
-Active tasks and their current status.
-
-## Current Task
-- 🏃 [Initial Agent Setup](./tasks/initial-agent-setup.md)
-
-## System Development
-- 🏃 Complete initial setup
-  - [ ] Establish identity and purpose
-  - [ ] Begin first task
-EOL
-
 # Create initial gptme.toml
 cat > "${TARGET_DIR}/gptme.toml" << EOL
 files = [
@@ -143,9 +139,13 @@ files = [
   "ARCHITECTURE.md",
   "ABOUT.md",
   "TASKS.md",
+  "TOOLS.md",
+
+  "lessons/README.md",
   "projects/README.md",
   "gptme.toml"
 ]
+context_cmd = "scripts/context.sh"
 EOL
 
 # Create creator profile
@@ -167,6 +167,9 @@ EOL
 
 # Initialize git
 (cd "${TARGET_DIR}" && git init)
+
+# Clone the gptme-contrib submodule
+(cd "${TARGET_DIR}" && git submodule add https://github.com/gptme/gptme-contrib.git gptme-contrib)
 
 # If pre-commit is installed
 # Install pre-commit hooks

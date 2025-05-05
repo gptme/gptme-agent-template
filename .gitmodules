@@ -1,0 +1,3 @@
+[submodule "gptme-contrib"]
+	path = gptme-contrib
+	url = https://github.com/gptme/gptme-contrib.git
