@@ -175,8 +175,17 @@ EOL
 # Install pre-commit hooks
 command -v pre-commit > /dev/null && (cd "${TARGET_DIR}" && pre-commit install)
 
+# Stage files first, then run pre-commit to format them
+(cd "${TARGET_DIR}" && git add .)
+
+# Run pre-commit to format staged files, then restage any changes
+if command -v pre-commit > /dev/null; then
+    (cd "${TARGET_DIR}" && pre-commit run || true)
+    (cd "${TARGET_DIR}" && git add .)
+fi
+
 # Commit initial files
-(cd "${TARGET_DIR}" && git add . && git commit -m "feat: initialize ${NEW_AGENT} agent workspace")
+(cd "${TARGET_DIR}" && git commit -m "feat: initialize ${NEW_AGENT} agent workspace")
 
 # Dry run the agent to check for errors
 (cd "${TARGET_DIR}" && ./run.sh --dry-run > /dev/null)

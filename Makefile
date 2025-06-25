@@ -10,10 +10,10 @@ install:
 check-names:
 	@# If we are in gptme-agent-template, we should have no instance-specific names, and vice versa
 	@if [ "$(shell basename $(CURDIR))" = "gptme-agent-template" ]; then \
-		! git grep -i "bob\|alice" -- ':!Makefile' ':!fork.sh'; \
+		! git grep -i "bob\|alice" -- ':!Makefile' ':!fork.sh' ':!scripts/fork.py'; \
 	else \
 		! git grep -i "gptme-agent" -- ':!Makefile'; \
-		! git grep -i "\-template" -- ':!Makefile' ':!fork.sh'; \
+		! git grep -i "\-template" -- ':!Makefile' ':!fork.sh' ':!scripts/fork.py'; \
 	fi
 
 # Run pre-commit checks and stage only previously staged files
