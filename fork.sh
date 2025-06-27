@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+# Get ISO 8601 datetime with seconds with support for BSD date (MacOS)
+iso_datetime() {
+  date -Iseconds 2>/dev/null || date +"%Y-%m-%dT%H:%M:%S%z"
+}
+
 # Check arguments
 if [ "$#" -ne 1 ] && [ "$#" -ne 2 ]; then
     echo "Usage: $0 <new_agent_workspace> [<new_agent_name>]"
@@ -103,7 +108,7 @@ copy_file TASKS.md
 # Initial setup task from template
 copy_file tasks/templates/initial-agent-setup.md
 cp "${SOURCE_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
-./scripts/tasks.py edit initial-agent-setup --set created $(date --iso-8601=second)
+./scripts/tasks.py edit initial-agent-setup --set created $(iso_datetime)
 
 # Create projects README
 cat > "${TARGET_DIR}/projects/README.md" << EOL
