@@ -17,6 +17,11 @@ fi
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_DIR="$1"
 
+# If target starts with ~, expand it
+if [[ "$TARGET_DIR" == ~* ]]; then
+    TARGET_DIR="${TARGET_DIR/#~/$HOME}"
+fi
+
 # If target is not an absolute path and doesn't start with ./ or ../
 if [[ "$TARGET_DIR" != /* ]] && [[ "$TARGET_DIR" != ./* ]] && [[ "$TARGET_DIR" != ../* ]]; then
     TARGET_DIR="$(realpath .)/${TARGET_DIR}"
