@@ -6,7 +6,7 @@
 [![Test](https://github.com/ErikBjare/gptme-agent-template/actions/workflows/test.yml/badge.svg)](https://github.com/ErikBjare/gptme-agent-template/actions/workflows/test.yml)
 
 > [!NOTE]
-> This is a template for a [gptme](https://gptme.org)-based agent.
+> This is a template for a [gptme](https://gptme.org)-based agent. See the [agents documentation](https://gptme.org/docs/agents.html) for more information about gptme agents and how they work.
 >
 > [Fork it](#forking) to create a new agent with its own identity.
 

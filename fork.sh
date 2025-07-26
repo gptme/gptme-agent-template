@@ -50,7 +50,7 @@ echo -e "\nCreating new agent '$NEW_AGENT' in directory '$TARGET_DIR'..."
 
 # Create core directory structure
 echo "Creating directory structure..."
-mkdir -p "${TARGET_DIR}"/{journal,tasks,projects,knowledge,people/templates,scripts/precommit}
+mkdir -p "${TARGET_DIR}"/{journal,tasks/templates,projects,knowledge,people/templates,scripts/precommit}
 
 # Copy core files and directories
 echo "Copying core files..."
@@ -85,11 +85,16 @@ function copy_file() {
 # Core documentation and configuration
 copy_file README.md
 cp "${SOURCE_DIR}/Makefile" "${TARGET_DIR}/Makefile"  # copy without replacing NAME_TEMPLATE
+copy_file ABOUT.md
 copy_file ARCHITECTURE.md
-copy_file .pre-commit-config.yaml
-copy_file scripts
+copy_file TOOLS.md
+copy_file TASKS.md
+copy_file projects/README.md
 copy_file run.sh
 copy_file fork.sh
+copy_file scripts
+copy_file gptme.toml
+copy_file .pre-commit-config.yaml
 copy_file .gitignore
 copy_file .gitmodules
 
@@ -97,83 +102,16 @@ copy_file .gitmodules
 copy_file knowledge/agent-forking.md
 copy_file knowledge/forking-workspace.md
 
-# Copy template
-copy_file */templates/*.md
-
 # Copy lessons
 copy_file lessons/README.md
 copy_file lessons/tools/shell-heredoc.md
 
-# Copy tools
-copy_file TOOLS.md
+# Copy templates
+copy_file */templates/*.md
 
-# Copy tasks
-copy_file TASKS.md
-
-# Initial setup task from template
-copy_file tasks/templates/initial-agent-setup.md
-cp "${SOURCE_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
+# Create initial setup task from template
+cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
 ./scripts/tasks.py edit initial-agent-setup --set created $(iso_datetime)
-
-# Create projects README
-cat > "${TARGET_DIR}/projects/README.md" << EOL
-# Projects
-
-This directory contains symlinks to the projects ${NEW_AGENT} works with.
-EOL
-
-# Create basic ABOUT.md template
-cat > "${TARGET_DIR}/ABOUT.md" << EOL
-# About ${NEW_AGENT}
-
-## Background
-[Brief background about ${NEW_AGENT}]
-
-## Personality
-[${NEW_AGENT}'s personality traits]
-
-## Tools
-[Available tools and capabilities]
-
-## Goals
-[${NEW_AGENT}'s primary goals and objectives]
-
-## Values
-[Core values and principles]
-EOL
-
-# Create initial gptme.toml
-cat > "${TARGET_DIR}/gptme.toml" << EOL
-files = [
-  "README.md",
-  "ARCHITECTURE.md",
-  "ABOUT.md",
-  "TASKS.md",
-  "TOOLS.md",
-
-  "lessons/README.md",
-  "projects/README.md",
-  "gptme.toml"
-]
-context_cmd = "scripts/context.sh"
-EOL
-
-# Create creator profile
-cat > "${TARGET_DIR}/people/creator.md" << EOL
-# Creator
-
-## Basic Information
-- Name: [Creator's name]
-- Relationship to ${NEW_AGENT}: Creator
-- First interaction: Creation
-- Last interaction: Ongoing
-
-## Contact Information
-[Creator's preferred contact methods]
-
-## Notes & History
-- Created ${NEW_AGENT} using the gptme agent architecture
-EOL
 
 # Initialize git
 (cd "${TARGET_DIR}" && git init)
@@ -206,7 +144,7 @@ TARGET_DIR_RELATIVE=$(python3 -c "import os, sys; print(os.path.relpath('${TARGE
 echo "
 Agent workspace created successfully! Next steps:
 1. cd ${TARGET_DIR_RELATIVE}
-2. Start the agent with: ./run.sh
+2. Start the agent with: gptme \"hello\"
 3. The agent will guide you through the setup interview
 4. Follow the agent's instructions to establish its identity
 

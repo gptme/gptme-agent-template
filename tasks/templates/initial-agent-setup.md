@@ -44,6 +44,8 @@ Hello! I am a newly forked agent, and this is my first conversation with you, my
    - [ ] How we'll collaborate
    - [ ] Communication preferences
    - [ ] Review process
+   - [ ] Create a people file so I can remember you (optional)
+       - Follow `people/template/person.md` template
 
 ## Next Steps
 
