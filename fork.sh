@@ -109,15 +109,15 @@ copy_file lessons/tools/shell-heredoc.md
 # Copy templates
 copy_file */templates/*.md
 
-# Create initial setup task from template
-cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
-./scripts/tasks.py edit initial-agent-setup --set created $(iso_datetime)
-
 # Initialize git
 (cd "${TARGET_DIR}" && git init)
 
 # Clone the gptme-contrib submodule
 (cd "${TARGET_DIR}" && git submodule add https://github.com/gptme/gptme-contrib.git gptme-contrib)
+
+# Create initial setup task from template
+cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
+(cd "${TARGET_DIR}" && ./scripts/tasks.py edit initial-agent-setup --set created $(iso_datetime))
 
 # If pre-commit is installed
 # Install pre-commit hooks
