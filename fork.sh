@@ -107,7 +107,7 @@ copy_file lessons/README.md
 copy_file lessons/tools/shell-heredoc.md
 
 # Copy templates
-copy_file */templates/*.md
+copy_file tasks/templates/initial-agent-setup.md
 
 # Create initial setup task from template
 cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
