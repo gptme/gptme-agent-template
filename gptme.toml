@@ -9,3 +9,6 @@ files = [
   "gptme.toml"
 ]
 context_cmd = "scripts/context.sh"
+
+[agent]
+name = "gptme-agent"
