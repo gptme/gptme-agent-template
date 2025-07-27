@@ -13,6 +13,14 @@ if [ "$#" -ne 1 ] && [ "$#" -ne 2 ]; then
     exit 1
 fi
 
+# Check for uv availability (required by tasks.py)
+if ! command -v uv > /dev/null 2>&1; then
+    echo "Error: 'uv' is required but not installed."
+    echo "Please install uv with: pipx install uv"
+    echo "Or visit: https://docs.astral.sh/uv/getting-started/installation/"
+    exit 1
+fi
+
 # Get the directory containing this script
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_DIR="$1"
