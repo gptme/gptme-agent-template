@@ -21,7 +21,7 @@ TREE_HARNESS="$(LANG=C tree -a --dirsfirst --noreport . -L 1)"
 TREE_TASKS="$(LANG=C tree -a --dirsfirst --noreport ./tasks)"
 TREE_PROJECTS="$(LANG=C tree -a --dirsfirst --noreport ./projects -L 1)"
 TREE_JOURNAL="$(LANG=C tree -a --dirsfirst --noreport ./journal)"
-TREE_KNOWLEDGE="$(LANG=C tree -a --dirsfirst --noreport ./knowledge)"
+TREE_KNOWLEDGE="$(LANG=C tree -a -L 2 --dirsfirst --noreport ./knowledge)"
 TREE_PEOPLE="$(LANG=C tree -a --dirsfirst --noreport ./people)"
 
 cat << EOF
