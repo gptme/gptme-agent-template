@@ -1,0 +1,30 @@
+[Unit]
+Description=Agent Task Scheduler
+After=network.target
+
+[Service]
+Type=simple
+# Path to your agent workspace (EDIT THIS)
+WorkingDirectory=/home/user/agent-workspace
+
+# Command to run the scheduler (EDIT THIS)
+# Option 1: Using Python module
+ExecStart=/usr/bin/python3 -m tasks_loop.scheduler
+
+# Option 2: Using uv (if using uv workspace)
+# ExecStart=/home/user/.local/bin/uv run python3 -m tasks_loop.scheduler
+
+# Restart on failure
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+# Environment variables (EDIT AS NEEDED)
+# Environment="PATH=/home/user/.local/bin:/usr/local/bin:/usr/bin:/bin"
+# Environment="LOG_LEVEL=INFO"
+
+[Install]
+WantedBy=default.target

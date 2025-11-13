@@ -1,0 +1,12 @@
+# Example: Weekly Cleanup
+# Runs every Sunday at 3:00 AM
+
+id: example-weekly-cleanup
+name: Weekly Cleanup
+description: Clean up temporary files and logs
+command: echo "Cleanup complete - $(date)"
+schedule: "0 3 * * 0"  # 3:00 AM on Sundays
+priority: low
+enabled: true
+max_retries: 0
+timeout_seconds: 600

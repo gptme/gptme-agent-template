@@ -1,0 +1,12 @@
+# Example: Daily Health Check
+# Runs every day at 2:00 AM
+
+id: example-daily-healthcheck
+name: Daily Health Check
+description: Check system health and log status
+command: echo "Health check complete - $(date)"
+schedule: "0 2 * * *"  # 2:00 AM daily
+priority: medium
+enabled: true
+max_retries: 1
+timeout_seconds: 300
