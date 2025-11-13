@@ -1,0 +1,20 @@
+[Unit]
+Description=Agent Input Orchestrator
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/agent-workspace
+ExecStart=%h/agent-workspace/.venv/bin/python3 -m lib.orchestrator
+Restart=always
+RestartSec=10
+
+# Environment
+Environment="PYTHONUNBUFFERED=1"
+
+# Resource limits
+MemoryMax=512M
+CPUQuota=50%
+
+[Install]
+WantedBy=default.target
