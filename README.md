@@ -37,6 +37,25 @@ make install
 ./run.sh "<prompt>"
 ```
 
+## Autonomous Operation
+
+gptme-agent can run autonomously on a schedule using the included infrastructure:
+
+**Quick Setup**:
+1. Customize `scripts/runs/autonomous/autonomous-run.sh` with your agent's details
+2. Edit the prompt template in the script to match your agent's goals
+3. Set up systemd timer (Linux) or cron job for scheduling
+4. Monitor via logs: `journalctl --user -u agent-autonomous.service`
+
+**See**: [`scripts/runs/autonomous/README.md`](./scripts/runs/autonomous/README.md) for complete documentation.
+
+**Features**:
+- CASCADE workflow (Loose Ends → Task Selection → Execution)
+- Two-queue system (manual + generated priorities)
+- Safety guardrails (GREEN/YELLOW/RED operation classification)
+- Session documentation and state management
+- Systemd timer templates included
+
 ## Forking
 
 You can create a clean fork of gptme-agent by running:

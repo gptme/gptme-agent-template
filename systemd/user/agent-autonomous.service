@@ -1,0 +1,21 @@
+[Unit]
+Description=Agent Autonomous Operation
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/path/to/your/workspace
+ExecStart=/path/to/your/workspace/scripts/runs/autonomous/autonomous-run.sh
+StandardOutput=journal
+StandardError=journal
+
+# Restart on failure with exponential backoff
+Restart=on-failure
+RestartSec=300
+
+# Resource limits
+TimeoutStartSec=3600
+MemoryMax=4G
+
+[Install]
+WantedBy=default.target
