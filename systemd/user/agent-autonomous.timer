@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Agent Autonomous Operation
+Requires=agent-autonomous.service
+
+[Timer]
+# Run every 2 hours (customize as needed)
+OnCalendar=*-*-* 06,08,10,12,14,16,18,20:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

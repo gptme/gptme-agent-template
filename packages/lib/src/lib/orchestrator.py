@@ -36,11 +36,7 @@ class InputSourceOrchestrator:
         self.last_poll: Dict[str, datetime] = {}
         self.running = False
 
-        # Set up logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
+        # Use existing logging configuration (set by consuming application)
         self.logger = logging.getLogger(__name__)
 
         # Initialize last poll times

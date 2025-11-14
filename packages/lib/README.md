@@ -216,7 +216,7 @@ Potential additions (not in template):
 - Metrics and monitoring
 - Retry logic for failed processing
 
-These are implemented in agent-specific repositories (e.g., Bob's workspace).
+These are implemented in agent-specific repositories (e.g., production agent workspaces).
 
 ## See Also
 
