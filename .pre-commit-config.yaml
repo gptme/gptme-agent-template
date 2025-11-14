@@ -43,13 +43,5 @@ repos:
         types: [markdown]
         files: ^tasks/.*\.md$
 
-      # redundant? already validated by validate-task-frontmatter?
-      # should combine them
-      - id: validate-tasks
-        name: Validate task metadata
-        description: Validates YAML frontmatter in task files
-        entry: ./scripts/tasks.py check
-        language: system
-        types: [markdown]
-        pass_filenames: false
-        #files: ^tasks/.*\.md$
+      # tasks.py validation removed - tasks.py is optional (from gptme-contrib)
+      # If you have gptme-contrib installed, you can run: ./scripts/tasks.py check
