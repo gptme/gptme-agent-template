@@ -164,10 +164,10 @@ EOF
 
 # Run gptme with the autonomous prompt (with timeout)
 log "Starting gptme session..."
-timeout $SCRIPT_TIMEOUT gptme --non-interactive "$PROMPT_FILE" 2>&1
+timeout $SCRIPT_TIMEOUT gptme --non-interactive "$PROMPT_FILE" 2>&1 || EXIT_CODE=$?
+EXIT_CODE=${EXIT_CODE:-0}
 
 # Check exit status
-EXIT_CODE=${PIPESTATUS[0]}
 if [ $EXIT_CODE -eq 0 ]; then
     log "Autonomous run completed successfully"
     exit 0
