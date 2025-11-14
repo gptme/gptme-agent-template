@@ -118,10 +118,14 @@ copy_file knowledge/forking-workspace.md
 
 # Copy lessons
 copy_file lessons/README.md
+copy_file lessons/TEMPLATE.md
 copy_file lessons/tools/shell-heredoc.md
+copy_file state
 
 # Copy templates
-copy_files */templates/*.md
+copy_file people/templates/person.md
+copy_file journal/templates/daily.md
+copy_file tasks/templates/initial-agent-setup.md
 
 # Initialize git
 (cd "${TARGET_DIR}" && git init)
