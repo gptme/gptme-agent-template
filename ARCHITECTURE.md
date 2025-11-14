@@ -18,7 +18,7 @@ For a information about tools used in this workspace, see [`TOOLS.md`](./TOOLS.m
 The task system helps to track and manage work effectively across sessions. It consists of:
 
 - Task files in [`tasks/`](./tasks/) as single source of truth
-- Task management CLI in [`scripts/tasks.py`](./scripts/tasks.py)
+- Task management CLI in `scripts/tasks.py` (optional, from gptme-contrib when available)
 - Daily progress logs in [`journal/`](./journal/)
 
 See [`TASKS.md`](./TASKS.md) for more details on the task system.
