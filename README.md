@@ -85,7 +85,7 @@ Then simply follow the instructions in the output.
 
 **[`scripts/`](./scripts/)**: Automation and utilities
 - `context.sh` - Main context generation orchestrator
-- `tasks.py` - Task management CLI
+- `tasks.py` - Task management CLI (optional, from gptme-contrib)
 - `runs/autonomous/` - Autonomous operation infrastructure
 - See [`scripts/README.md`](./scripts/README.md) for complete documentation
 

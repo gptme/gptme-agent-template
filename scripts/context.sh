@@ -29,7 +29,7 @@ $SCRIPT_DIR/context-journal.sh
 echo
 echo -e "# Tasks\n"
 # tasks.py is optional (provided by gptme-contrib submodule)
-if [ -f "$SCRIPT_DIR/tasks.py" ]; then
+if [ -x "$SCRIPT_DIR/tasks.py" ]; then
     echo -e "Output of \`$SCRIPT_DIR/tasks.py status --compact\` command:\n"
     $SCRIPT_DIR/tasks.py status --compact
 else

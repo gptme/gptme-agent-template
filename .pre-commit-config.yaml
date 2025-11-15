@@ -42,6 +42,9 @@ repos:
         language: system
         types: [markdown]
         files: ^tasks/.*\.md$
-
-      # tasks.py validation removed - tasks.py is optional (from gptme-contrib)
-      # If you have gptme-contrib installed, you can run: ./scripts/tasks.py check
+      - id: validate-task-metadata
+        name: Validate task metadata
+        entry: bash -c 'if [ -x "./scripts/tasks.py" ]; then ./scripts/tasks.py check; else echo "tasks.py not found (optional) - skipping validation"; fi'
+        language: system
+        types: [markdown]
+        files: ^tasks/.*\.md$
