@@ -118,20 +118,30 @@ copy_file knowledge/forking-workspace.md
 
 # Copy lessons
 copy_file lessons/README.md
+copy_file lessons/TEMPLATE.md
 copy_file lessons/tools/shell-heredoc.md
+copy_file state
 
 # Copy templates
-copy_files */templates/*.md
+copy_file people/templates/person.md
+copy_file journal/templates/daily.md
+copy_file tasks/templates/initial-agent-setup.md
 
 # Initialize git
 (cd "${TARGET_DIR}" && git init)
 
-# Clone the gptme-contrib submodule
+# Clone and initialize the gptme-contrib submodule
 (cd "${TARGET_DIR}" && git submodule add https://github.com/gptme/gptme-contrib.git gptme-contrib)
+(cd "${TARGET_DIR}" && git submodule update --init --recursive)
 
 # Create initial setup task from template
 cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
-(cd "${TARGET_DIR}" && ./scripts/tasks.py edit initial-agent-setup --set created $(iso_datetime))
+# Set creation timestamp if tasks.py is available (optional tool)
+if [ -f "${TARGET_DIR}/scripts/tasks.py" ]; then
+    (cd "${TARGET_DIR}" && ./scripts/tasks.py edit initial-agent-setup --set created $(iso_datetime))
+else
+    echo "Note: tasks.py not available - skipping timestamp update (optional tool)"
+fi
 
 # If pre-commit is installed
 # Install pre-commit hooks

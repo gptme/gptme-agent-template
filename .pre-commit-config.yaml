@@ -42,14 +42,9 @@ repos:
         language: system
         types: [markdown]
         files: ^tasks/.*\.md$
-
-      # redundant? already validated by validate-task-frontmatter?
-      # should combine them
-      - id: validate-tasks
+      - id: validate-task-metadata
         name: Validate task metadata
-        description: Validates YAML frontmatter in task files
-        entry: ./scripts/tasks.py check
+        entry: bash -c 'if [ -x "./scripts/tasks.py" ]; then ./scripts/tasks.py check; else echo "tasks.py not found (optional) - skipping validation"; fi'
         language: system
         types: [markdown]
-        pass_filenames: false
-        #files: ^tasks/.*\.md$
+        files: ^tasks/.*\.md$

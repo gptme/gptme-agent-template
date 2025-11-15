@@ -28,8 +28,14 @@ echo
 $SCRIPT_DIR/context-journal.sh
 echo
 echo -e "# Tasks\n"
-echo -e "Output of \`$SCRIPT_DIR/tasks.py status --compact\` command:\n"
-$SCRIPT_DIR/tasks.py status --compact
+# tasks.py is optional (provided by gptme-contrib submodule)
+if [ -x "$SCRIPT_DIR/tasks.py" ]; then
+    echo -e "Output of \`$SCRIPT_DIR/tasks.py status --compact\` command:\n"
+    $SCRIPT_DIR/tasks.py status --compact
+else
+    echo -e "(Task management CLI not installed - optional tool from gptme-contrib)\n"
+    echo -e "See: https://github.com/gptme/gptme-contrib for installation\n"
+fi
 echo
 $SCRIPT_DIR/context-workspace.sh
 echo
