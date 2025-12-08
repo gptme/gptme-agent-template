@@ -72,5 +72,3 @@ This infrastructure was developed to prevent common git workflow issues:
 - Committing directly to master in external repos
 - Branching from unmerged local commits
 - Pushing to wrong branches due to bad worktree tracking
-
-See: [ErikBjare/bob Issue #188](https://github.com/ErikBjare/bob/issues/188) for full context.
