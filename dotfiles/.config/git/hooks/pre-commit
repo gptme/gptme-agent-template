@@ -34,7 +34,7 @@ if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "main" ]; then
             echo "   Pattern: $pattern"
             echo ""
             echo "   Please create a feature branch instead:"
-            echo "   git checkout -b feature-name origin/master"
+            echo "   git checkout -b feature-name origin/$BRANCH"
             echo ""
             exit 1
         fi
