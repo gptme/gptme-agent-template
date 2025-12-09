@@ -6,10 +6,50 @@ iso_datetime() {
   date -Iseconds 2>/dev/null || date +"%Y-%m-%dT%H:%M:%S%z"
 }
 
+# Default options
+WITH_DOTFILES=false
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --with-dotfiles)
+            WITH_DOTFILES=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [OPTIONS] <new_agent_workspace> [<new_agent_name>]"
+            echo ""
+            echo "Create a new agent workspace from the template."
+            echo ""
+            echo "Arguments:"
+            echo "  <new_agent_workspace>  Path for the new agent workspace"
+            echo "  [<new_agent_name>]     Optional: Agent name (defaults to directory name)"
+            echo ""
+            echo "Options:"
+            echo "  --with-dotfiles        Include dotfiles (global git hooks)"
+            echo "  --help, -h             Show this help message"
+            echo ""
+            echo "Examples:"
+            echo "  $0 alice-agent Alice"
+            echo "  $0 --with-dotfiles ~/bob bob"
+            exit 0
+            ;;
+        -*)
+            echo "Error: Unknown option: $1"
+            echo "Use --help for usage information."
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
 # Check arguments
-if [ "$#" -ne 1 ] && [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <new_agent_workspace> [<new_agent_name>]"
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    echo "Usage: $0 [OPTIONS] <new_agent_workspace> [<new_agent_name>]"
     echo "Example: $0 alice-agent Alice"
+    echo "Use --help for more options."
     exit 1
 fi
 
@@ -134,6 +174,25 @@ copy_file tasks/templates/initial-agent-setup.md
 (cd "${TARGET_DIR}" && git submodule add https://github.com/gptme/gptme-contrib.git gptme-contrib)
 (cd "${TARGET_DIR}" && git submodule update --init --recursive)
 
+# Setup dotfiles if requested
+if [ "$WITH_DOTFILES" = true ]; then
+    echo "Setting up dotfiles with symlinks to gptme-contrib..."
+
+    # Create dotfiles directory structure
+    mkdir -p "${TARGET_DIR}/dotfiles/.config/git/hooks"
+
+    # Create symlinks to individual files (allows selective ejection)
+    ln -sf ../gptme-contrib/dotfiles/install.sh "${TARGET_DIR}/dotfiles/install.sh"
+    ln -sf ../gptme-contrib/dotfiles/README.md "${TARGET_DIR}/dotfiles/README.md"
+    ln -sf ../../../../gptme-contrib/dotfiles/.config/git/hooks/pre-commit "${TARGET_DIR}/dotfiles/.config/git/hooks/pre-commit"
+    ln -sf ../../../../gptme-contrib/dotfiles/.config/git/hooks/pre-push "${TARGET_DIR}/dotfiles/.config/git/hooks/pre-push"
+    ln -sf ../../../../gptme-contrib/dotfiles/.config/git/hooks/post-checkout "${TARGET_DIR}/dotfiles/.config/git/hooks/post-checkout"
+    ln -sf ../../../../gptme-contrib/dotfiles/.config/git/hooks/validate-branch-base.sh "${TARGET_DIR}/dotfiles/.config/git/hooks/validate-branch-base.sh"
+    ln -sf ../../../../gptme-contrib/dotfiles/.config/git/hooks/validate-worktree-tracking.sh "${TARGET_DIR}/dotfiles/.config/git/hooks/validate-worktree-tracking.sh"
+
+    echo "✓ Dotfiles symlinks created (use dotfiles/install.sh to activate)"
+fi
+
 # Create initial setup task from template
 cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
 # Set creation timestamp if tasks.py is available (optional tool)
@@ -165,11 +224,20 @@ fi
 # Make the target directory relative to the current directory (prettier output)
 TARGET_DIR_RELATIVE=$(python3 -c "import os, sys; print(os.path.relpath('${TARGET_DIR}', start='$(pwd)'))")
 
+# Build success message
+DOTFILES_MSG=""
+if [ "$WITH_DOTFILES" = true ]; then
+    DOTFILES_MSG="
+Dotfiles included! To activate git hooks:
+  cd ${TARGET_DIR_RELATIVE}/dotfiles && ./install.sh
+"
+fi
+
 echo "
 Agent workspace created successfully! Next steps:
 1. cd ${TARGET_DIR_RELATIVE}
 2. Start the agent with: gptme \"hello\"
 3. The agent will guide you through the setup interview
 4. Follow the agent's instructions to establish its identity
-
+${DOTFILES_MSG}
 The new agent workspace is ready in: ${TARGET_DIR}"

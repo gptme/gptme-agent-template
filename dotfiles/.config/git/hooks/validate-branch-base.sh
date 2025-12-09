@@ -1,0 +1,1 @@
+../../../../gptme-contrib/dotfiles/.config/git/hooks/validate-branch-base.sh

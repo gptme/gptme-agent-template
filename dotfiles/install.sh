@@ -1,0 +1,1 @@
+../gptme-contrib/dotfiles/install.sh

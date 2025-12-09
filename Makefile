@@ -9,8 +9,11 @@ install:
 
 check-names:
 	@# If we are in gptme-agent-template, we should have no instance-specific names, and vice versa
-	@if [ "$(shell basename $(CURDIR))" = "gptme-agent-template" ]; then \
-		! git grep -i "bob\|alice" -- ':!Makefile' ':!fork.sh' ':!scripts/fork.py'; \
+	@# Note: dotfiles/install.sh is excluded because it legitimately references common agent name
+	@# patterns (bob, alice) for environment detection - these are NOT instance-specific.
+	@# Uses remote URL check to work correctly from worktrees (where basename != repo name)
+	@if git config --get remote.origin.url | grep -q "gptme-agent-template"; then \
+		! git grep -i "bob\|alice" -- ':!Makefile' ':!fork.sh' ':!scripts/fork.py' ':!dotfiles/install.sh'; \
 	else \
 		! git grep -i "gptme-agent" -- ':!Makefile'; \
 		! git grep -i "\-template" -- ':!Makefile' ':!fork.sh' ':!scripts/fork.py'; \
