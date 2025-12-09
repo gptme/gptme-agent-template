@@ -14,31 +14,57 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# --- Part 1: Prevent master commits in external repos ---
+# --- Part 1: Prevent master commits (allowlist approach) ---
+# By default, master/main commits are blocked in ALL repos.
+# Only repos matching ALLOWED_PATTERNS or detected as agent workspaces are allowed.
 BRANCH=$(git branch --show-current 2>/dev/null)
 if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "main" ]; then
-    REMOTE_URL=$(git remote get-url origin 2>/dev/null)
+    REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
 
-    # Repos where master/main commits are forbidden (external repos without push access)
-    # Customize this list for your agent's commonly-used external repos
-    FORBIDDEN_PATTERNS=(
-        "gptme/gptme"
-        "gptme/gptme-contrib"
-        # Add other repos where you contribute but don't have push to master
+    # Repos where master/main commits ARE allowed
+    # Add patterns for repos where you have push access to master
+    ALLOWED_PATTERNS=(
+        # Example: "your-org/your-repo"
+        # The agent's own repo is auto-detected below
     )
 
-    for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
-        if [[ "$REMOTE_URL" == *"$pattern"* ]]; then
-            echo -e "${RED}❌ ERROR: Cannot commit directly to $BRANCH in external repo${NC}"
-            echo "   Repo: $REMOTE_URL"
-            echo "   Pattern: $pattern"
-            echo ""
-            echo "   Please create a feature branch instead:"
-            echo "   git checkout -b feature-name origin/$BRANCH"
-            echo ""
-            exit 1
+    is_allowed=false
+
+    # Check 1: Explicit allowlist patterns
+    for pattern in "${ALLOWED_PATTERNS[@]}"; do
+        if [ -n "$pattern" ] && [[ "$REMOTE_URL" == *"$pattern"* ]]; then
+            is_allowed=true
+            break
         fi
     done
+
+    # Check 2: Auto-detect agent workspace (has gptme.toml with [agent] section)
+    if [ "$is_allowed" = false ] && [ -f "gptme.toml" ]; then
+        if grep -q '\[agent\]' "gptme.toml" 2>/dev/null; then
+            is_allowed=true
+        fi
+    fi
+
+    # Check 3: Template repo itself (for development)
+    if [ "$is_allowed" = false ] && [[ "$REMOTE_URL" == *"gptme-agent-template"* ]]; then
+        is_allowed=true
+    fi
+
+    if [ "$is_allowed" = false ]; then
+        echo -e "${RED}❌ ERROR: Cannot commit directly to $BRANCH${NC}"
+        echo "   Repo: $REMOTE_URL"
+        echo ""
+        echo "   This hook prevents direct master/main commits in external repos."
+        echo "   Only agent workspace repos (with gptme.toml [agent] section) are allowed."
+        echo ""
+        echo "   Please create a feature branch instead:"
+        echo "   git checkout -b feature-name origin/$BRANCH"
+        echo ""
+        echo "   To allow a specific repo, add it to ALLOWED_PATTERNS in:"
+        echo "   ~/.config/git/hooks/pre-commit"
+        echo ""
+        exit 1
+    fi
 fi
 
 # --- Part 2: Branch base validation (warning only) ---
