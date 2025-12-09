@@ -1,3 +1,1 @@
-#!/bin/bash
-# Pre-push hook: calls worktree tracking validation
-exec "$(dirname "$0")/validate-worktree-tracking.sh" "$@"
+../../../../gptme-contrib/dotfiles/.config/git/hooks/pre-push
