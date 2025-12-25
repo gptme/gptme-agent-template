@@ -223,3 +223,56 @@ These are implemented in agent-specific repositories (e.g., production agent wor
 - Task Scheduler: `packages/tasks_loop/` - Scheduled autonomous execution
 - Work Queue: `state/queue-*.md` - Task prioritization
 - Scripts: `scripts/` - Queue generation and utilities
+
+## Journal Module
+
+The `journal` module provides utilities for managing agent journal entries with support for two formats.
+
+### Supported Formats
+
+**Legacy (flat)**: `journal/2025-12-24-topic.md`
+**New (subdirectories)**: `journal/2025-12-24/topic.md`
+
+The module automatically detects and handles both formats, making migration seamless.
+
+### Key Functions
+
+```python
+from lib.journal import (
+    find_journal_directory,
+    generate_journal_context,
+    get_journals_for_date,
+    get_recent_journal_date,
+)
+
+# Find journal directory in workspace
+journal_dir = find_journal_directory(agent_dir)
+
+# Get most recent journal date
+recent_date = get_recent_journal_date(journal_dir)
+
+# Get all journal files for a specific date
+journals = get_journals_for_date(journal_dir, "2025-12-24")
+
+# Generate formatted context for gptme
+context = generate_journal_context(agent_dir)
+```
+
+### Migration
+
+To migrate existing journals from flat to subdirectory format:
+
+```bash
+# Preview migration
+./scripts/migrate-journals.py
+
+# Execute migration
+./scripts/migrate-journals.py --execute
+```
+
+### Benefits of Subdirectory Format
+
+- **Better organization**: Files grouped by date
+- **Reduced clutter**: Large journal directories become manageable
+- **Improved performance**: Filesystem operations on date directories
+- **Parallel agent support**: Multiple session files per day with unique names
