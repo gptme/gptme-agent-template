@@ -27,15 +27,25 @@ def find_journal_directory(agent_dir: Path) -> Optional[Path]:
 
 
 def is_date_directory(path: Path) -> bool:
-    """Check if a path is a YYYY-MM-DD date directory.
+    """Check if a path is a YYYY-MM-DD date directory with a valid date.
 
     Args:
         path: Path to check
 
     Returns:
-        True if path is a directory with YYYY-MM-DD name
+        True if path is a directory with a valid YYYY-MM-DD date name
     """
-    return path.is_dir() and bool(re.match(r"^\d{4}-\d{2}-\d{2}$", path.name))
+    if not path.is_dir():
+        return False
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", path.name):
+        return False
+    # Validate actual date (reject month 13, day 40, etc.)
+    try:
+        year, month, day = map(int, path.name.split("-"))
+        date(year, month, day)  # Raises ValueError for invalid dates
+        return True
+    except ValueError:
+        return False
 
 
 def extract_date_from_path(path: Path) -> Optional[str]:

@@ -20,7 +20,24 @@ echo "# Journal Context"
 echo
 
 # Get most recent journal date (from any journal file)
-LATEST_JOURNAL=$(find journal -maxdepth 1 -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.md" -type f | sort -r | head -n 1)
+# Supports both formats:
+#   - Legacy flat: journal/2025-12-24-topic.md
+#   - New subdirectory: journal/2025-12-24/topic.md
+
+# Find all journal files (both formats)
+ALL_JOURNALS=$(
+    # Legacy flat format
+    find journal -maxdepth 1 -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.md" -type f 2>/dev/null
+    # New subdirectory format
+    find journal -mindepth 2 -maxdepth 2 -name "*.md" -type f 2>/dev/null | while read f; do
+        parent=$(basename "$(dirname "$f")")
+        if echo "$parent" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+            echo "$f"
+        fi
+    done
+)
+
+LATEST_JOURNAL=$(echo "$ALL_JOURNALS" | sort -r | head -n 1)
 
 if [ -z "$LATEST_JOURNAL" ]; then
     echo "No journal entries found."
@@ -28,11 +45,35 @@ if [ -z "$LATEST_JOURNAL" ]; then
     exit 0
 fi
 
-# Extract date from filename (before any description)
-DATE=$(basename "$LATEST_JOURNAL" .md | grep -oE '^[0-9]{4}-[0-9]{2}-[0-9]{2}')
+# Extract date from path (supports both formats)
+# - Legacy: journal/2025-12-24-topic.md -> extract from filename
+# - Subdirectory: journal/2025-12-24/topic.md -> extract from parent dir
+extract_date_from_path() {
+    local path="$1"
+    local parent=$(basename "$(dirname "$path")")
+    # Check if parent dir is a date (subdirectory format)
+    if echo "$parent" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+        echo "$parent"
+    else
+        # Legacy format: extract from filename
+        basename "$path" .md | grep -oE '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+    fi
+}
+
+DATE=$(extract_date_from_path "$LATEST_JOURNAL")
 
 # Get all journal files for this date, sorted by modification time (most recent first)
-JOURNALS_BY_MTIME=$(find journal -maxdepth 1 -name "${DATE}*.md" -type f -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2)
+# Supports both formats
+JOURNALS_BY_MTIME=$(
+    {
+        # Legacy flat format
+        find journal -maxdepth 1 -name "${DATE}*.md" -type f 2>/dev/null
+        # New subdirectory format
+        if [ -d "journal/${DATE}" ]; then
+            find "journal/${DATE}" -maxdepth 1 -name "*.md" -type f 2>/dev/null
+        fi
+    } | while read f; do stat -c '%Y %n' "$f" 2>/dev/null; done | sort -rn | cut -d' ' -f2
+)
 
 # Determine if this is today's or a past journal
 if [ "$(date +%Y-%m-%d)" = "$DATE" ]; then
@@ -56,7 +97,7 @@ echo
 # Add instructions based on journal date
 if [ "$(date +%Y-%m-%d)" != "$DATE" ]; then
     echo "**IMPORTANT**: This journal is from $DATE (not today: $(date +%Y-%m-%d))."
-    echo "Create a NEW journal entry for today at: \`journal/$(date +%Y-%m-%d)-<description>.md\`"
+    echo "Create a NEW journal entry for today at: \`journal/$(date +%Y-%m-%d)/<description>.md\`"
     echo
 fi
 
@@ -70,13 +111,21 @@ OLDER_JOURNALS=$(echo "$JOURNALS_BY_MTIME" | tail -n +$((MAX_FULL_ENTRIES + 1)))
 # Output most recent journal files in full
 for JOURNAL in $RECENT_JOURNALS; do
     BASENAME=$(basename "$JOURNAL" .md)
-    # Extract description if present
-    if [[ "$BASENAME" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-(.+)$ ]]; then
+    PARENT_DIR=$(basename "$(dirname "$JOURNAL")")
+    DESCRIPTION=""
+
+    # Extract description based on format
+    if echo "$PARENT_DIR" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+        # Subdirectory format: journal/2025-12-24/topic.md - description is just the filename
+        DESCRIPTION="$BASENAME"
+    elif [[ "$BASENAME" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-(.+)$ ]]; then
+        # Legacy flat format: journal/2025-12-24-topic.md - extract after date prefix
         DESCRIPTION="${BASH_REMATCH[1]}"
-        if [ "$JOURNAL_COUNT" -gt 1 ]; then
-            echo "## Session: $DESCRIPTION"
-            echo
-        fi
+    fi
+
+    if [ -n "$DESCRIPTION" ] && [ "$JOURNAL_COUNT" -gt 1 ]; then
+        echo "## Session: $DESCRIPTION"
+        echo
     fi
 
     echo "\`\`\`$JOURNAL"
