@@ -157,6 +157,35 @@ Located in `scripts/runs/autonomous/`:
 - Loaded by autonomous-run.sh
 - Customizable per agent
 
+## Journal System
+
+The journal system supports two formats:
+- **Legacy (flat)**: `journal/2025-12-24-topic.md`
+- **New (subdirectories)**: `journal/2025-12-24/topic.md`
+
+Both formats are supported automatically by the context generation scripts and the Python journal module in `packages/lib`.
+
+### migrate-journals.py
+
+**Purpose**: Migrate journal files from flat to subdirectory structure.
+
+**Usage**:
+```bash
+# Dry run (shows what would happen)
+./scripts/migrate-journals.py
+
+# Actually perform migration
+./scripts/migrate-journals.py --execute
+```
+
+**Benefits of subdirectory format**:
+- Reduced directory clutter (especially for long-running agents)
+- Better filesystem performance
+- Easier date-based navigation
+- Prepared for parallel agent operations
+
+**Note**: Migration is optional. The system works with both formats.
+
 ## Search and Utilities
 
 **search.sh**:
