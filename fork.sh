@@ -216,7 +216,7 @@ if command -v pre-commit > /dev/null; then
 fi
 
 # Commit initial files
-(cd "${TARGET_DIR}" && git commit -m "feat: initialize ${NEW_AGENT} agent workspace")
+(cd "${TARGET_DIR}" && git commit -m "feat: initialize ${NEW_AGENT} agent workspace" --author="${NEW_AGENT}")
 
 # Dry run the agent to check for errors
 (cd "${TARGET_DIR}" && ./run.sh --dry-run > /dev/null)

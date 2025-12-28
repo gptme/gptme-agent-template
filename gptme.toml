@@ -1,3 +1,7 @@
+[agent]
+name = "gptme-agent"
+
+[prompt]
 files = [
   "README.md",
   "ARCHITECTURE.md",
@@ -10,5 +14,9 @@ files = [
 ]
 context_cmd = "scripts/context.sh"
 
-[agent]
-name = "gptme-agent"
+[lessons]
+# Layered lessons: gptme-contrib (shared/generic) + workspace (agent-specific)
+# The default ./lessons directory is automatically searched, so agent-specific lessons
+# are found first. Adding gptme-contrib/lessons provides shared lessons as fallback.
+# External skills (Anthropic SKILL.md format) are also crawled from these dirs.
+dirs = ["lessons", "gptme-contrib/lessons"]
