@@ -58,7 +58,24 @@ gptme-agent can run autonomously on a schedule using the included infrastructure
 
 ## Forking
 
-You can create a clean fork of gptme-agent by running:
+Before forking to create a new agent you must update the submodules:
+
+```sh
+git submodule update --init --recursive
+```
+
+and it is recommended to install the `tree` command if you don't have it already:
+
+```sh
+# Debian/Ubuntu
+sudo apt install tree
+
+# macOS
+# Using Homebrew
+brew install tree
+```
+
+You can now create a clean fork of gptme-agent by running:
 
 ```sh
 ./fork.sh <path> [<agent-name>]
