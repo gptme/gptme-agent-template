@@ -144,7 +144,6 @@ copy_file ARCHITECTURE.md
 copy_file TOOLS.md
 copy_file TASKS.md
 copy_file projects/README.md
-copy_file fork.sh
 copy_file scripts
 copy_file gptme.toml
 copy_file .pre-commit-config.yaml
