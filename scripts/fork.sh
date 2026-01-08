@@ -62,7 +62,7 @@ if ! command -v uv > /dev/null 2>&1; then
 fi
 
 # Get the directory containing this script
-SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET_DIR="$1"
 
 # If target starts with ~, expand it
@@ -144,7 +144,6 @@ copy_file ARCHITECTURE.md
 copy_file TOOLS.md
 copy_file TASKS.md
 copy_file projects/README.md
-copy_file fork.sh
 copy_file scripts
 copy_file gptme.toml
 copy_file .pre-commit-config.yaml

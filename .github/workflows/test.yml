@@ -47,5 +47,5 @@ jobs:
     - name: Test fork.sh script
       run: |
         # Test basic usage (script will do its own validation)
-        ./fork.sh test-agent
-        ./fork.sh test-agent-named TestAgent
+        ./scripts/fork.sh test-agent
+        ./scripts/fork.sh test-agent-named TestAgent

@@ -13,10 +13,10 @@ check-names:
 	@# patterns (bob, alice) for environment detection - these are NOT instance-specific.
 	@# Uses remote URL check to work correctly from worktrees (where basename != repo name)
 	@if git config --get remote.origin.url | grep -q "gptme-agent-template"; then \
-		! git grep -i "bob\|alice" -- ':!Makefile' ':!fork.sh' ':!scripts/fork.py' ':!dotfiles/install.sh'; \
+		! git grep -i "bob\|alice" -- ':!Makefile' ':!scripts/fork.sh' ':!scripts/fork.py' ':!dotfiles/install.sh'; \
 	else \
 		! git grep -i "gptme-agent" -- ':!Makefile'; \
-		! git grep -i "\-template" -- ':!Makefile' ':!fork.sh' ':!scripts/fork.py'; \
+		! git grep -i "\-template" -- ':!Makefile' ':!scripts/fork.sh' ':!scripts/fork.py'; \
 	fi
 
 # Run pre-commit checks and stage only previously staged files
