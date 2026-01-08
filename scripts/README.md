@@ -201,7 +201,7 @@ The journal system supports two formats:
 
 ## Pre-commit Hooks
 
-Located in `scripts/precommit/`:
+Located in `gptme-contrib/scripts/precommit/` (via submodule):
 
 Validation scripts run by pre-commit framework:
 - Task frontmatter validation

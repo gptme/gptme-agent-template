@@ -29,7 +29,7 @@ repos:
       - id: check-markdown-links
         name: Check markdown links
         description: Verifies all relative links in markdown files resolve correctly
-        entry: python3 scripts/precommit/check_markdown_links.py
+        entry: python3 ./gptme-contrib/scripts/precommit/check_markdown_links.py
         language: system
         types: [markdown]
         pass_filenames: true
@@ -38,7 +38,7 @@ repos:
       - id: validate-task-frontmatter
         name: Validate task frontmatter
         description: Validates YAML frontmatter in task files
-        entry: ./scripts/precommit/validate_task_frontmatter.py
+        entry: ./gptme-contrib/scripts/precommit/validate_task_frontmatter.py
         language: system
         types: [markdown]
         files: ^tasks/.*\.md$
