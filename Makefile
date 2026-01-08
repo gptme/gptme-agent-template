@@ -16,7 +16,7 @@ check-names:
 		! git grep -i "bob\|alice" -- ':!Makefile' ':!scripts/fork.sh' ':!scripts/fork.py' ':!dotfiles/install.sh'; \
 	else \
 		! git grep -i "gptme-agent" -- ':!Makefile'; \
-		! git grep -i "\-template" -- ':!Makefile' ':!scripts/fork.py' ':!scripts/fork.py'; \
+		! git grep -i "\-template" -- ':!Makefile' ':!scripts/fork.sh' ':!scripts/fork.py'; \
 	fi
 
 # Run pre-commit checks and stage only previously staged files
