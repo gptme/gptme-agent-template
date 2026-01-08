@@ -98,7 +98,7 @@ echo -e "\nCreating new agent '$NEW_AGENT' in directory '$TARGET_DIR'..."
 
 # Create core directory structure
 echo "Creating directory structure..."
-mkdir -p "${TARGET_DIR}"/{journal,tasks/templates,projects,knowledge,people/templates,scripts/precommit}
+mkdir -p "${TARGET_DIR}"/{journal,tasks/templates,projects,knowledge,people/templates,scripts}
 
 # Copy core files and directories
 echo "Copying core files..."
