@@ -22,7 +22,7 @@ repos:
       - id: check-names
         name: Check for agent-instance names
         description: Verifies that we are not accidentally using names of agents in the template, or vice versa
-        entry: make check-names
+        entry: ./gptme-contrib/scripts/precommit/check-names.sh
         language: system
         pass_filenames: false
         always_run: true
