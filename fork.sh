@@ -144,7 +144,6 @@ copy_file ARCHITECTURE.md
 copy_file TOOLS.md
 copy_file TASKS.md
 copy_file projects/README.md
-copy_file run.sh
 copy_file fork.sh
 copy_file scripts
 copy_file gptme.toml
@@ -217,9 +216,6 @@ fi
 
 # Commit initial files
 (cd "${TARGET_DIR}" && git commit -m "feat: initialize ${NEW_AGENT} agent workspace")
-
-# Dry run the agent to check for errors
-(cd "${TARGET_DIR}" && ./run.sh --dry-run > /dev/null)
 
 # Make the target directory relative to the current directory (prettier output)
 TARGET_DIR_RELATIVE=$(python3 -c "import os, sys; print(os.path.relpath('${TARGET_DIR}', start='$(pwd)'))")
