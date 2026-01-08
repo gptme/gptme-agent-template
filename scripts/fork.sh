@@ -62,7 +62,7 @@ if ! command -v uv > /dev/null 2>&1; then
 fi
 
 # Get the directory containing this script
-SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET_DIR="$1"
 
 # If target starts with ~, expand it
