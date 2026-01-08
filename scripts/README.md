@@ -163,8 +163,6 @@ The journal system supports two formats:
 - **Legacy (flat)**: `journal/2025-12-24-topic.md`
 - **New (subdirectories)**: `journal/2025-12-24/topic.md`
 
-Both formats are supported automatically by the context generation scripts and the Python journal module in `packages/lib`.
-
 ### migrate-journals.py
 
 **Purpose**: Migrate journal files from flat to subdirectory structure.
