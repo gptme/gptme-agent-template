@@ -8,3 +8,6 @@ install-precommit:  ## Install pre-commit hooks for repo
 
 install-dotfiles:  ## Install dotfiles for user, with global git hooks
 	./dotfiles/install.sh
+
+stats:  ## Show code statistics
+	cloc . --by-file --exclude_dir gptme-contrib,.git,.mypy_cache,__pycache__
