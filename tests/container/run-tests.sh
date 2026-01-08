@@ -41,7 +41,7 @@ echo ""
 
 # Test 1: Fork creates valid agent structure
 log_test "Fork creates valid agent structure"
-if ./scripts/fork.sh /home/testuser/test-agent testagent 2>/dev/null; then
+if ./scripts/fork.sh /home/testuser/test-agent testagent; then
     log_pass "Fork completed successfully"
 else
     log_fail "Fork failed"
@@ -80,7 +80,7 @@ fi
 
 # Test 4: Agent name substitution worked
 log_test "Agent name substitution in gptme.toml"
-if grep -q 'name = "testagent"' gptme.toml 2>/dev/null || grep -q 'name = "Testagent"' gptme.toml 2>/dev/null; then
+if grep -q 'name = "testagent"' gptme.toml; then
     log_pass "Agent name correctly substituted"
 else
     log_fail "Agent name not found in gptme.toml"
@@ -150,9 +150,10 @@ else
 fi
 
 # Test 10: Scripts have execute permission
+# Note: fork.sh is NOT copied to forked agents (stays in template only)
 log_test "Script execute permissions"
 scripts_with_exec=true
-for script in scripts/context.sh scripts/fork.sh; do
+for script in scripts/context.sh; do
     if [[ -f "$script" ]] && [[ ! -x "$script" ]]; then
         log_fail "Missing execute permission: $script"
         scripts_with_exec=false

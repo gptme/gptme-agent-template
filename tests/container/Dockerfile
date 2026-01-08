@@ -17,9 +17,12 @@ RUN apt-get update && apt-get install -y \
     systemd \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv for Python package management
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
+# Install uv for Python package management (system-wide so testuser can access it)
+RUN curl -LsSf https://astral.sh/uv/install.sh -o /tmp/uv-install.sh && \
+    sh /tmp/uv-install.sh && \
+    mv /root/.local/bin/uv /usr/local/bin/uv && \
+    mv /root/.local/bin/uvx /usr/local/bin/uvx && \
+    rm /tmp/uv-install.sh
 
 # Create test user (simulates real agent setup)
 RUN useradd -m -s /bin/bash testuser && \
