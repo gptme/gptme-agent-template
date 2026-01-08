@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     sudo \
     systemd \
+    tree \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for Python package management (system-wide so testuser can access it)

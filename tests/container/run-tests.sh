@@ -86,12 +86,26 @@ else
     log_fail "Agent name not found in gptme.toml"
 fi
 
-# Test 5: Context script exists and is executable
-# Note: Full execution test requires gh CLI and other dependencies
-# For fork validation, we just verify the script is present and executable
-log_test "Context script setup"
+# Test 5: Context script generates output
+# Per Erik's request: actually test context generation, handle missing tools gracefully
+log_test "Context script execution"
 if [[ -f scripts/context.sh ]] && [[ -x scripts/context.sh ]]; then
-    log_pass "Context script present and executable"
+    # Run context.sh and capture output
+    CONTEXT_OUTPUT=$(./scripts/context.sh 2>&1) || true
+    CONTEXT_LINES=$(echo "$CONTEXT_OUTPUT" | wc -l)
+
+    # Check if meaningful output was generated (should have headers and content)
+    if [[ $CONTEXT_LINES -gt 10 ]] && echo "$CONTEXT_OUTPUT" | grep -q "# Context Summary"; then
+        log_pass "Context script generates output ($CONTEXT_LINES lines)"
+        # Show a sample of the output for debugging
+        echo -e "${YELLOW}[INFO]${NC} Context output preview:"
+        echo "$CONTEXT_OUTPUT" | head -20
+        echo "..."
+    else
+        log_fail "Context script did not generate expected output (got $CONTEXT_LINES lines)"
+        echo "Output was:"
+        echo "$CONTEXT_OUTPUT"
+    fi
 else
     log_fail "Context script missing or not executable"
 fi
