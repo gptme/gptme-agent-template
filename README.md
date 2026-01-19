@@ -33,9 +33,11 @@ pipx install gptme
 pipx install pre-commit
 make install
 
-# run gptme-agent
-./run.sh "<prompt>"
+# run gptme-agent (from the workspace directory)
+gptme "<prompt>"
 ```
+
+The agent's context is automatically loaded via `gptme.toml` which configures the files and context command to include.
 
 ## Autonomous Operation
 
