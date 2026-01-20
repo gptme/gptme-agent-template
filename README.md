@@ -22,6 +22,41 @@ This git repository is the brain of gptme-agent. It is a workspace of their thou
 Information about gptme-agent can be found in [`ABOUT.md`](./ABOUT.md), including their personality and goals.
 Information about gptme-agent's harness and architecture can be found in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
+<!--template-->
+## Prerequisites
+
+Before forking or using this template, ensure you have the required dependencies installed.
+
+**Quick Check:**
+```sh
+./install-deps.sh
+```
+
+**Auto-Install (where possible):**
+```sh
+./install-deps.sh --install
+```
+
+### Required Dependencies
+
+| Dependency | Purpose | Installation |
+|------------|---------|--------------|
+| `git` | Version control | Package manager |
+| `python3` | Python 3.10+ runtime | Package manager |
+| `pipx` | Python CLI tool installer | `python3 -m pip install --user pipx` |
+| `uv` | Fast Python package manager | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| `gptme` | Agent framework | `pipx install gptme` |
+
+### Recommended Dependencies
+
+| Dependency | Purpose | Installation |
+|------------|---------|--------------|
+| `tree` | Directory visualization | `apt/brew/dnf install tree` |
+| `jq` | JSON processing | `apt/brew/dnf install jq` |
+| `gh` | GitHub CLI | [cli.github.com](https://cli.github.com/) |
+| `pre-commit` | Git hooks | `pipx install pre-commit` |
+<!--/template-->
+
 ## Usage
 
 Run gptme-agent with:
