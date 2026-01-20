@@ -89,10 +89,10 @@ if ! check_cmd "uv" "uv" "curl -LsSf https://astral.sh/uv/install.sh | sh"; then
 fi
 
 # gptme
-if ! check_cmd "gptme" "gptme" "pipx install 'gptme-python[server,browser,telemetry]'"; then
+if ! check_cmd "gptme" "gptme" "pipx install gptme[server,browser,telemetry]"; then
     if $INSTALL_MODE; then
         echo -e "${YELLOW}Installing gptme...${NC}"
-        pipx install "gptme-python[server,browser]"
+        pipx install gptme[server,browser,telemetry]
     fi
 fi
 
