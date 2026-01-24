@@ -55,6 +55,7 @@ Before forking or using this template, ensure you have the required dependencies
 | `jq` | JSON processing | `apt/brew/dnf install jq` |
 | `gh` | GitHub CLI | [cli.github.com](https://cli.github.com/) |
 | `pre-commit` | Git hooks | `pipx install pre-commit` |
+| `shellcheck` | Shell script linter | `apt/brew/dnf install shellcheck` |
 <!--/template-->
 
 ## Usage

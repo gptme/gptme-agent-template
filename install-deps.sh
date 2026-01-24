@@ -106,26 +106,31 @@ case $OS in
         check_cmd "tree" "tree" "brew install tree"
         check_cmd "jq" "jq" "brew install jq"
         check_cmd "gh" "GitHub CLI" "brew install gh"
+        check_cmd "shellcheck" "shellcheck" "brew install shellcheck"
         ;;
     debian)
         check_cmd "tree" "tree" "sudo apt install tree"
         check_cmd "jq" "jq" "sudo apt install jq"
         check_cmd "gh" "GitHub CLI" "See https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
+        check_cmd "shellcheck" "shellcheck" "sudo apt install shellcheck"
         ;;
     fedora)
         check_cmd "tree" "tree" "sudo dnf install tree"
         check_cmd "jq" "jq" "sudo dnf install jq"
         check_cmd "gh" "GitHub CLI" "sudo dnf install gh"
+        check_cmd "shellcheck" "shellcheck" "sudo dnf install shellcheck"
         ;;
     arch)
         check_cmd "tree" "tree" "sudo pacman -S tree"
         check_cmd "jq" "jq" "sudo pacman -S jq"
         check_cmd "gh" "GitHub CLI" "sudo pacman -S github-cli"
+        check_cmd "shellcheck" "shellcheck" "sudo pacman -S shellcheck"
         ;;
     *)
         check_cmd "tree" "tree" "Install via package manager"
         check_cmd "jq" "jq" "Install via package manager"
         check_cmd "gh" "GitHub CLI" "See https://cli.github.com/"
+        check_cmd "shellcheck" "shellcheck" "Install via package manager"
         ;;
 esac
 
