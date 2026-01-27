@@ -14,21 +14,28 @@ All task details are maintained as individual Markdown files under `./tasks/`.
 
 ## Task CLI Usage
 
-The task system provides a CLI for managing tasks:
+The task system provides a CLI for managing tasks via `gptodo`.
+
+**Installation** (if not already installed):
+```sh
+uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo
+```
+
+**Commands**:
 
 ```sh
 # View task status
-./scripts/tasks.py status              # Show all tasks
-./scripts/tasks.py status --compact    # Show only new/active
-./scripts/tasks.py status --type tasks # Show specific type
+gptodo status              # Show all tasks
+gptodo status --compact    # Show only new/active
+gptodo status --type tasks # Show specific type
 
 # List tasks
-./scripts/tasks.py list               # List all tasks
-./scripts/tasks.py list --sort state  # Sort by state
-./scripts/tasks.py list --sort date   # Sort by date
+gptodo list               # List all tasks
+gptodo list --sort state  # Sort by state
+gptodo list --sort date   # Sort by date
 
 # Show task details
-./scripts/tasks.py show <task-id>     # Show specific task
+gptodo show <task-id>     # Show specific task
 ```
 
 ### Task Metadata Updates
@@ -37,22 +44,22 @@ The task system provides a CLI for updating task metadata:
 
 ```sh
 # Basic usage
-./scripts/tasks.py edit <task-id> [--set|--add|--remove <field> <value>]
+gptodo edit <task-id> [--set|--add|--remove <field> <value>]
 
 # Examples
-./scripts/tasks.py edit my-task --set state active       # Set task state
-./scripts/tasks.py edit my-task --set priority high      # Set priority
-./scripts/tasks.py edit my-task --add tag feature        # Add a tag
-./scripts/tasks.py edit my-task --add depends other-task # Add dependency
+gptodo edit my-task --set state active       # Set task state
+gptodo edit my-task --set priority high      # Set priority
+gptodo edit my-task --add tag feature        # Add a tag
+gptodo edit my-task --add depends other-task # Add dependency
 
 # Multiple changes
-./scripts/tasks.py edit my-task \
+gptodo edit my-task \
   --set state active \
   --add tag feature \
   --add depends other-task
 
 # Multiple tasks
-./scripts/tasks.py edit task-1 task-2 --set state done
+gptodo edit task-1 task-2 --set state done
 ```
 
 Valid fields and values:
@@ -124,14 +131,14 @@ Additional notes, context, or documentation...
 
    - Update state in frontmatter to 'active'
    - Create journal entry about starting task
-   - Monitor progress with tasks.py
+   - Monitor progress with gptodo
 
 3. **Progress Tracking**
 
    - Daily updates in journal entries
    - Update task metadata as needed
    - Track subtask completion
-   - View progress with tasks.py
+   - View progress with gptodo
 
 4. **Completion/Cancellation**
 
@@ -173,7 +180,7 @@ Tasks are validated using pre-commit hooks that check:
 
    - Regular updates in journal entries
    - Document blockers and dependencies
-   - Track progress with tasks.py
+   - Track progress with gptodo
    - Keep metadata current and accurate
 
 4. **Documentation**
