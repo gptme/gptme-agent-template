@@ -9,7 +9,7 @@ scripts/
 ├── context.sh              # Main context generation orchestrator
 ├── context-journal.sh      # Recent journal entries context
 ├── context-workspace.sh    # Workspace files overview
-├── tasks.py*              # Task management CLI (optional, from gptme-contrib)
+├── gptodo                  # Task management CLI (install via: uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo)
 ├── search.sh              # Multi-source search across workspace
 ├── compare.sh             # Compare files or directories
 ├── fork.py                # Agent forking automation
@@ -42,7 +42,7 @@ context_cmd = "/path/to/scripts/context.sh"
 **What it does**:
 1. Generates context summary header with timestamp
 2. Calls component scripts (journal, workspace)
-3. Shows task status via tasks.py
+3. Shows task status via gptodo
 4. Displays git status
 
 **Output format**:
@@ -118,28 +118,31 @@ Generated on: [timestamp]
 $SCRIPT_DIR/context-notifications.sh  # Your custom script
 ```
 
-## Task Management: tasks.py (Optional)
+## Task Management: gptodo (Optional)
 
 **Purpose**: CLI for task management (status, list, edit operations).
 
-**Note**: This tool is provided by gptme-contrib when available. See gptme-contrib documentation for installation.
+**Installation**:
+```bash
+uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo
+```
 
 **Common commands**:
 ```bash
 # View task status
-./scripts/tasks.py status
+gptodo status
 
 # Compact view (for context)
-./scripts/tasks.py status --compact
+gptodo status --compact
 
 # List all tasks
-./scripts/tasks.py list
+gptodo list
 
 # Show specific task
-./scripts/tasks.py show <task-id>
+gptodo show <task-id>
 
 # Edit task metadata
-./scripts/tasks.py edit <task-id> --set state active
+gptodo edit <task-id> --set state active
 ```
 
 ## Autonomous Run Infrastructure
@@ -220,7 +223,6 @@ Configure in `.pre-commit-config.yaml` at repo root.
 
 **Customization**:
 - Copy and modify component scripts
-- Don't edit shared scripts (tasks.py)
 - Document customizations in comments
 
 **Integration**:

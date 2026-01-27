@@ -28,13 +28,13 @@ echo
 $SCRIPT_DIR/context-journal.sh
 echo
 echo -e "# Tasks\n"
-# tasks.py is optional (provided by gptme-contrib submodule)
-if [ -x "$SCRIPT_DIR/tasks.py" ]; then
-    echo -e "Output of \`$SCRIPT_DIR/tasks.py status --compact\` command:\n"
-    $SCRIPT_DIR/tasks.py status --compact
+# gptodo is the task management CLI (replaces deprecated tasks.py)
+if command -v gptodo &> /dev/null; then
+    echo -e "Output of \`gptodo status --compact\` command:\n"
+    gptodo status --compact
 else
-    echo -e "(Task management CLI not installed - optional tool from gptme-contrib)\n"
-    echo -e "See: https://github.com/gptme/gptme-contrib for installation\n"
+    echo -e "(Task management CLI not installed - install gptodo from gptme-contrib)\n"
+    echo -e "See: uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo\n"
 fi
 echo
 $SCRIPT_DIR/context-workspace.sh

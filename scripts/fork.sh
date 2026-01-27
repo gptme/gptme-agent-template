@@ -53,13 +53,7 @@ if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
     exit 1
 fi
 
-# Check for uv availability (required by tasks.py)
-if ! command -v uv > /dev/null 2>&1; then
-    echo "Error: 'uv' is required but not installed."
-    echo "Please install uv with: pipx install uv"
-    echo "Or visit: https://docs.astral.sh/uv/getting-started/installation/"
-    exit 1
-fi
+
 
 # Get the directory containing this script
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -193,11 +187,12 @@ fi
 
 # Create initial setup task from template
 cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
-# Set creation timestamp if tasks.py is available (optional tool)
-if [ -f "${TARGET_DIR}/scripts/tasks.py" ]; then
-    (cd "${TARGET_DIR}" && ./scripts/tasks.py edit initial-agent-setup --set created $(iso_datetime))
+# Set creation timestamp if gptodo is available (optional tool)
+if command -v gptodo > /dev/null 2>&1; then
+    (cd "${TARGET_DIR}" && gptodo edit initial-agent-setup --set created $(iso_datetime))
 else
-    echo "Note: tasks.py not available - skipping timestamp update (optional tool)"
+    echo "Note: gptodo not installed - skipping timestamp update"
+    echo "Install with: uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo"
 fi
 
 # If pre-commit is installed
