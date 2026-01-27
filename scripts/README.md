@@ -9,7 +9,7 @@ scripts/
 ├── context.sh              # Main context generation orchestrator
 ├── context-journal.sh      # Recent journal entries context
 ├── context-workspace.sh    # Workspace files overview
-├── tasks.py*              # Task management CLI (optional, from gptme-contrib)
+├── gptodo                  # Task management CLI (install via: uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo)
 ├── search.sh              # Multi-source search across workspace
 ├── compare.sh             # Compare files or directories
 ├── fork.py                # Agent forking automation

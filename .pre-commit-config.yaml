@@ -44,7 +44,7 @@ repos:
         files: ^tasks/.*\.md$
       - id: validate-task-metadata
         name: Validate task metadata
-        entry: bash -c 'if [ -x "./scripts/tasks.py" ]; then ./scripts/tasks.py check; else echo "tasks.py not found (optional) - skipping validation"; fi'
+        entry: bash -c 'if command -v gptodo &> /dev/null; then gptodo check; else echo "gptodo not installed (optional) - skipping validation"; fi'
         language: system
         types: [markdown]
         files: ^tasks/.*\.md$
