@@ -57,3 +57,10 @@ repos:
         language: system
         types: [markdown]
         files: ^tasks/.*\.md$
+      - id: validate-symlinks
+        name: Validate symlinks
+        description: Ensures all symlinks point to valid targets
+        entry: python3 ./gptme-contrib/scripts/precommit/validators/validate_symlinks.py
+        language: system
+        pass_filenames: false
+        always_run: true
