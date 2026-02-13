@@ -5,6 +5,9 @@ repos:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: check-added-large-files
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.9
     hooks:
@@ -57,10 +60,3 @@ repos:
         language: system
         types: [markdown]
         files: ^tasks/.*\.md$
-      - id: validate-symlinks
-        name: Validate symlinks
-        description: Ensures all symlinks point to valid targets
-        entry: python3 ./gptme-contrib/scripts/precommit/validators/validate_symlinks.py
-        language: system
-        pass_filenames: false
-        always_run: true
