@@ -1,0 +1,1 @@
+../gptme-contrib/lessons/tools/markdown-codeblock-syntax.md

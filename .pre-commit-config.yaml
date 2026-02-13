@@ -35,6 +35,15 @@ repos:
         pass_filenames: true
         # Exclude example files which intentionally have broken links
         exclude: ^projects/.*/examples/.*$
+      - id: validate-markdown-codeblock-syntax
+        name: Validate markdown codeblock syntax
+        description: Ensures markdown codeblocks have language tags to prevent parsing cut-offs
+        entry: python3 ./gptme-contrib/scripts/precommit/validators/validate_markdown_codeblock_syntax.py
+        language: system
+        types: [markdown]
+        pass_filenames: true
+        # Exclude lesson files - they need to show anti-patterns
+        exclude: ^lessons/.*$
       - id: validate-task-frontmatter
         name: Validate task frontmatter
         description: Validates YAML frontmatter in task files
