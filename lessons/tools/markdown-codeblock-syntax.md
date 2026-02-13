@@ -1,1 +1,1 @@
-../gptme-contrib/lessons/tools/markdown-codeblock-syntax.md
+../../gptme-contrib/lessons/tools/markdown-codeblock-syntax.md
