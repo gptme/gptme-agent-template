@@ -58,32 +58,43 @@ Before forking or using this template, ensure you have the required dependencies
 | `shellcheck` | Shell script linter | `apt/brew/dnf install shellcheck` |
 <!--/template-->
 
-## Usage
+## Quick Start
 
-Run gptme-agent with:
+The easiest way to create a new agent from this template is with the `gptme-agent` CLI (included with gptme):
 
 ```sh
 pipx install gptme
 
-# optional (but recommended): setup pre-commit hooks
-pipx install pre-commit
-make install
+# Create a new agent workspace from this template
+gptme-agent create ~/my-agent --name MyAgent
 
-# run gptme-agent (from the workspace directory)
-gptme "<prompt>"
+cd ~/my-agent
+
+# Run the agent interactively
+gptme "hello"
 ```
 
 The agent's context is automatically loaded via `gptme.toml` which configures the files and context command to include.
 
 ## Autonomous Operation
 
-gptme-agent can run autonomously on a schedule using the included infrastructure:
+Agents can run autonomously on a schedule using systemd (Linux) or launchd (macOS):
 
-**Quick Setup**:
-1. Customize `scripts/runs/autonomous/autonomous-run.sh` with your agent's details
-2. Edit the prompt template in the script to match your agent's goals
-3. Set up systemd timer (Linux) or cron job for scheduling
-4. Monitor via logs: `journalctl --user -u agent-autonomous.service`
+```sh
+# Install as a system service (runs every 30 minutes by default)
+gptme-agent install
+
+# Customize the schedule
+gptme-agent install --schedule "*:00"    # Every hour
+
+# Manage the agent
+gptme-agent status              # Check status
+gptme-agent logs --follow       # Monitor logs
+gptme-agent run                 # Trigger immediate run
+gptme-agent stop                # Pause scheduled runs
+```
+
+To customize the autonomous behavior, edit `scripts/runs/autonomous/autonomous-run.sh` with your agent's details and prompt.
 
 **See**: [`scripts/runs/autonomous/README.md`](./scripts/runs/autonomous/README.md) for complete documentation.
 
@@ -92,34 +103,20 @@ gptme-agent can run autonomously on a schedule using the included infrastructure
 - Two-queue system (manual + generated priorities)
 - Safety guardrails (GREEN/YELLOW/RED operation classification)
 - Session documentation and state management
-- Systemd timer templates included
 
-## Forking
+## Forking (manual alternative)
 
-Before forking to create a new agent you must update the submodules:
+If you prefer to fork manually instead of using `gptme-agent create`:
 
 ```sh
+git clone https://github.com/gptme/gptme-agent-template
+cd gptme-agent-template
 git submodule update --init --recursive
+
+./scripts/fork.sh <path> [<agent-name>]
 ```
 
-and it is recommended to install the `tree` command if you don't have it already:
-
-```sh
-# Debian/Ubuntu
-sudo apt install tree
-
-# macOS
-# Using Homebrew
-brew install tree
-```
-
-You can now create a clean fork of gptme-agent by running:
-
-```sh
-./fork.sh <path> [<agent-name>]
-```
-
-Then simply follow the instructions in the output.
+Then follow the instructions in the output.
 
 ## Workspace Structure
 
