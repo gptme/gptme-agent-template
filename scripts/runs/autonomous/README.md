@@ -10,24 +10,42 @@ Autonomous runs enable your agent to work independently without human interventi
 - Safety guardrails and operational guidelines
 - Session documentation and state management
 
+## Backends
+
+Two backends are supported:
+
+| Backend | Script | Best For |
+|---------|--------|----------|
+| **gptme** | `autonomous-run.sh` | gptme-native agents, local models |
+| **Claude Code** | `autonomous-run-cc.sh` | Claude Max subscription, Claude-native tooling |
+
+Both backends use the same identity files (from `gptme.toml`) and follow the same CASCADE workflow.
+
 ## Quick Start
 
-### 1. Customize the Script
+### 1. Choose Your Backend
 
-Edit `autonomous-run.sh` and update the configuration section:
+**gptme backend**: Edit `autonomous-run.sh` and update the configuration section:
 
 ```bash
-# === CONFIGURATION (CUSTOMIZE THESE) ===
-AGENT_NAME="YourAgent"  # Replace with your agent's name
-WORKSPACE="/path/to/your/workspace"  # Replace with your workspace path
-REPO_OWNER="your-github-username"  # Replace with your GitHub username
-REPO_NAME="your-agent-workspace"  # Replace with your workspace repo name
-SCRIPT_TIMEOUT=3000  # 50 minutes (adjust based on your schedule)
+AGENT_NAME="YourAgent"
+WORKSPACE="/path/to/your/workspace"
+REPO_OWNER="your-github-username"
+REPO_NAME="your-agent-workspace"
+SCRIPT_TIMEOUT=3000
+```
+
+**Claude Code backend**: Edit `autonomous-run-cc.sh`:
+
+```bash
+AGENT_NAME="YourAgent"
+# WORKSPACE auto-detects from script location
+MODEL="sonnet"  # or "opus"
 ```
 
 ### 2. Customize the Prompt
 
-Edit the prompt template in the "Create autonomous operation prompt" section to:
+Edit the prompt template in your chosen script to:
 - Add your agent's specific goals and values
 - Adjust safety guidelines for your use case
 - Modify the workflow to match your needs
@@ -39,7 +57,12 @@ Run the script directly to verify it works:
 
 ```bash
 cd /path/to/your/workspace
+
+# gptme backend
 ./scripts/runs/autonomous/autonomous-run.sh
+
+# Claude Code backend
+./scripts/runs/autonomous/autonomous-run-cc.sh
 ```
 
 ### 4. Schedule with systemd (Linux)
@@ -47,12 +70,17 @@ cd /path/to/your/workspace
 Create a systemd timer to run automatically:
 
 ```bash
-# Copy the example service and timer
+# Copy the example service and timer for your backend
+# gptme backend:
 cp ../../systemd/user/agent-autonomous.service ~/.config/systemd/user/
+# Claude Code backend:
+cp ../../systemd/user/agent-autonomous-cc.service ~/.config/systemd/user/
+
 cp ../../systemd/user/agent-autonomous.timer ~/.config/systemd/user/
 
 # Edit to match your configuration
 # Update WorkingDirectory, ExecStart paths, and schedule
+# For CC backend: also update the PATH to include your node installation
 
 # Enable and start
 systemctl --user daemon-reload
@@ -187,9 +215,23 @@ fi
 - Check for infinite loops or hanging operations
 
 ### Multiple Runs Conflicting
-- Implement lock mechanism to prevent concurrent runs
-- Use systemd's `After=` directive
-- Add conflict detection in the script
+- The CC script includes built-in lock management
+- For the gptme script, implement a lock mechanism or use systemd's `After=` directive
+
+### Claude Code Binary Not Found (CC backend)
+- Ensure node/npm is installed (Claude Code is a Node binary)
+- The systemd service needs the node PATH explicitly set
+- Find your path: `dirname $(which node)`
+- Update `Environment="PATH=..."` in the service file
+
+### Profile Sourcing Fails (CC backend)
+- Version managers (nvm, pyenv) may return non-zero in non-interactive shells
+- The CC script uses `source ~/.profile 2>/dev/null || true` to handle this
+- If authentication fails, run `claude /login` interactively first
+
+### Process Gets SIGSTOP in tmux/systemd
+- Claude Code requires `</dev/null` stdin redirect in non-interactive contexts
+- The CC script handles this automatically
 
 ## Examples
 

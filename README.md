@@ -76,6 +76,26 @@ gptme "hello"
 
 The agent's context is automatically loaded via `gptme.toml` which configures the files and context command to include.
 
+### Claude Code Backend
+
+The template also supports Claude Code as an alternative backend:
+
+```sh
+# Install Claude Code
+npm install -g @anthropic-ai/claude-code
+
+# Authenticate
+claude /login
+
+# Run interactively (reads AGENTS.md automatically)
+claude
+
+# Run autonomously
+./scripts/runs/autonomous/autonomous-run-cc.sh
+```
+
+The `scripts/build-system-prompt.sh` script reads `gptme.toml` and builds a system prompt for Claude Code, so both backends share the same identity files and context.
+
 ## Autonomous Operation
 
 Agents can run autonomously on a schedule using systemd (Linux) or launchd (macOS):
@@ -94,7 +114,9 @@ gptme-agent run                 # Trigger immediate run
 gptme-agent stop                # Pause scheduled runs
 ```
 
-To customize the autonomous behavior, edit `scripts/runs/autonomous/autonomous-run.sh` with your agent's details and prompt.
+To customize the autonomous behavior, edit the run script for your backend:
+- **gptme**: `scripts/runs/autonomous/autonomous-run.sh`
+- **Claude Code**: `scripts/runs/autonomous/autonomous-run-cc.sh`
 
 **See**: [`scripts/runs/autonomous/README.md`](./scripts/runs/autonomous/README.md) for complete documentation.
 
@@ -103,6 +125,7 @@ To customize the autonomous behavior, edit `scripts/runs/autonomous/autonomous-r
 - Two-queue system (manual + generated priorities)
 - Safety guardrails (GREEN/YELLOW/RED operation classification)
 - Session documentation and state management
+- **Multi-backend**: Supports both gptme and Claude Code backends
 
 ## Forking (manual alternative)
 

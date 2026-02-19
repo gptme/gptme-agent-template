@@ -1,0 +1,25 @@
+[Unit]
+Description=Agent Autonomous Operation (Claude Code)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/path/to/your/workspace
+ExecStart=/path/to/your/workspace/scripts/runs/autonomous/autonomous-run-cc.sh
+StandardOutput=journal
+StandardError=journal
+
+# Node/nvm PATH — adjust to match your nvm installation
+# Find your node path: dirname $(which node)
+Environment="PATH=/home/youruser/.nvm/versions/node/v24.13.1/bin:/usr/local/bin:/usr/bin:/bin"
+
+# Restart on failure with backoff
+Restart=on-failure
+RestartSec=300
+
+# Resource limits
+TimeoutStartSec=3600
+MemoryMax=4G
+
+[Install]
+WantedBy=default.target
