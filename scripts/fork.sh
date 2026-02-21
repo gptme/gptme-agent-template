@@ -54,7 +54,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  --minimal              Minimal agent (journal, tasks, knowledge, lessons only)"
-            echo "  --without-autonomous   Exclude autonomous run scripts and state queues"
+            echo "  --without-autonomous   Exclude autonomous run scripts"
             echo "  --without-people       Exclude people directory and templates"
             echo "  --without-projects     Exclude projects directory"
             echo "  --without-state        Exclude state/queue system"
@@ -213,7 +213,7 @@ else
     echo "# State (not included)" > "${TARGET_DIR}/state/README.md"
     echo "" >> "${TARGET_DIR}/state/README.md"
     echo "This agent was created without the state/queue system." >> "${TARGET_DIR}/state/README.md"
-    echo "To add it, re-fork with \`--without-state\` removed, or copy from the template." >> "${TARGET_DIR}/state/README.md"
+    echo "To add it, re-fork without the \`--without-state\` flag, or copy from the template." >> "${TARGET_DIR}/state/README.md"
 fi
 
 # Optional: projects directory
@@ -221,6 +221,12 @@ if [ "$WITH_PROJECTS" = true ]; then
     copy_file projects/README.md
 else
     echo "  Skipping: projects directory"
+    # Create stub so gptme.toml reference to projects/README.md doesn't fail
+    mkdir -p "${TARGET_DIR}/projects"
+    echo "# Projects (not included)" > "${TARGET_DIR}/projects/README.md"
+    echo "" >> "${TARGET_DIR}/projects/README.md"
+    echo "This agent was created without the projects directory." >> "${TARGET_DIR}/projects/README.md"
+    echo "To add it, re-fork without the \`--without-projects\` flag, or copy from the template." >> "${TARGET_DIR}/projects/README.md"
 fi
 
 # Optional: people directory
@@ -233,7 +239,7 @@ else
     echo "# People (not included)" > "${TARGET_DIR}/people/README.md"
     echo "" >> "${TARGET_DIR}/people/README.md"
     echo "This agent was created without the people directory." >> "${TARGET_DIR}/people/README.md"
-    echo "To add it, re-fork with \`--without-people\` removed, or copy from the template." >> "${TARGET_DIR}/people/README.md"
+    echo "To add it, re-fork without the \`--without-people\` flag, or copy from the template." >> "${TARGET_DIR}/people/README.md"
 fi
 
 # Copy templates (always included)
