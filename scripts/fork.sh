@@ -6,14 +6,41 @@ iso_datetime() {
   date -Iseconds 2>/dev/null || date +"%Y-%m-%dT%H:%M:%S%z"
 }
 
-# Default options
+# Default options: everything included
 WITH_DOTFILES=false
+WITH_AUTONOMOUS=true
+WITH_PEOPLE=true
+WITH_PROJECTS=true
+WITH_STATE=true
 
 # Parse options
 while [[ $# -gt 0 ]]; do
     case $1 in
         --with-dotfiles)
             WITH_DOTFILES=true
+            shift
+            ;;
+        --without-autonomous)
+            WITH_AUTONOMOUS=false
+            shift
+            ;;
+        --without-people)
+            WITH_PEOPLE=false
+            shift
+            ;;
+        --without-projects)
+            WITH_PROJECTS=false
+            shift
+            ;;
+        --without-state)
+            WITH_STATE=false
+            shift
+            ;;
+        --minimal)
+            WITH_AUTONOMOUS=false
+            WITH_PEOPLE=false
+            WITH_PROJECTS=false
+            WITH_STATE=false
             shift
             ;;
         --help|-h)
@@ -26,12 +53,19 @@ while [[ $# -gt 0 ]]; do
             echo "  [<new_agent_name>]     Optional: Agent name (defaults to directory name)"
             echo ""
             echo "Options:"
+            echo "  --minimal              Minimal agent (journal, tasks, knowledge, lessons only)"
+            echo "  --without-autonomous   Exclude autonomous run scripts and state queues"
+            echo "  --without-people       Exclude people directory and templates"
+            echo "  --without-projects     Exclude projects directory"
+            echo "  --without-state        Exclude state/queue system"
             echo "  --with-dotfiles        Include dotfiles (global git hooks)"
             echo "  --help, -h             Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0 alice-agent Alice"
-            echo "  $0 --with-dotfiles ~/bob bob"
+            echo "  $0 alice-agent Alice                    # Full-featured agent"
+            echo "  $0 --minimal simple-bot SimpleBot       # Minimal agent"
+            echo "  $0 --without-autonomous ~/bob bob       # No autonomous runs"
+            echo "  $0 --with-dotfiles ~/bob bob            # Include git hooks"
             exit 0
             ;;
         -*)
@@ -92,7 +126,10 @@ echo -e "\nCreating new agent '$NEW_AGENT' in directory '$TARGET_DIR'..."
 
 # Create core directory structure
 echo "Creating directory structure..."
-mkdir -p "${TARGET_DIR}"/{journal,tasks/templates,projects,knowledge,people/templates,scripts}
+mkdir -p "${TARGET_DIR}"/{journal,tasks/templates,knowledge,lessons,scripts}
+[ "$WITH_PROJECTS" = true ] && mkdir -p "${TARGET_DIR}/projects"
+[ "$WITH_PEOPLE" = true ] && mkdir -p "${TARGET_DIR}/people/templates"
+[ "$WITH_STATE" = true ] && mkdir -p "${TARGET_DIR}/state"
 
 # Copy core files and directories
 echo "Copying core files..."
@@ -130,32 +167,76 @@ function copy_files() {
     done
 }
 
-# Core documentation and configuration
+# Core documentation and configuration (always included)
 copy_file README.md
 cp "${SOURCE_DIR}/Makefile" "${TARGET_DIR}/Makefile"  # copy without replacing NAME_TEMPLATE
 copy_file ABOUT.md
 copy_file ARCHITECTURE.md
 copy_file TOOLS.md
 copy_file TASKS.md
-copy_file projects/README.md
-copy_file scripts
 copy_file gptme.toml
 copy_file .pre-commit-config.yaml
 copy_file .gitignore
 copy_file .gitmodules
 
+# Core scripts (context generation is always needed)
+# Copy scripts directory, then optionally remove autonomous runs
+copy_file scripts
+
+if [ "$WITH_AUTONOMOUS" = false ]; then
+    echo "  Skipping: autonomous run scripts"
+    rm -rf "${TARGET_DIR}/scripts/runs"
+    # Create stub so doc links resolve
+    mkdir -p "${TARGET_DIR}/scripts/runs/autonomous"
+    echo "# Autonomous Runs (not included)" > "${TARGET_DIR}/scripts/runs/autonomous/README.md"
+    echo "" >> "${TARGET_DIR}/scripts/runs/autonomous/README.md"
+    echo "This agent was created without autonomous run infrastructure." >> "${TARGET_DIR}/scripts/runs/autonomous/README.md"
+    echo "To add it, re-fork without \`--without-autonomous\`, or copy from the template." >> "${TARGET_DIR}/scripts/runs/autonomous/README.md"
+fi
+
 # Copy base knowledge
 copy_file knowledge/agent-forking.md
 copy_file knowledge/forking-workspace.md
 
-# Copy lessons
+# Copy lessons (always included — core learning system)
 copy_file lessons/README.md
 copy_file lessons/TEMPLATE.md
 copy_file lessons/tools/shell-heredoc.md
-copy_file state
 
-# Copy templates
-copy_file people/templates/person.md
+# Optional: state/queue system
+if [ "$WITH_STATE" = true ]; then
+    copy_file state
+else
+    echo "  Skipping: state/queue system"
+    # Create stub so doc links resolve
+    mkdir -p "${TARGET_DIR}/state"
+    echo "# State (not included)" > "${TARGET_DIR}/state/README.md"
+    echo "" >> "${TARGET_DIR}/state/README.md"
+    echo "This agent was created without the state/queue system." >> "${TARGET_DIR}/state/README.md"
+    echo "To add it, re-fork with \`--without-state\` removed, or copy from the template." >> "${TARGET_DIR}/state/README.md"
+fi
+
+# Optional: projects directory
+if [ "$WITH_PROJECTS" = true ]; then
+    copy_file projects/README.md
+else
+    echo "  Skipping: projects directory"
+fi
+
+# Optional: people directory
+if [ "$WITH_PEOPLE" = true ]; then
+    copy_file people/templates/person.md
+else
+    echo "  Skipping: people directory"
+    # Create stub so doc links resolve
+    mkdir -p "${TARGET_DIR}/people"
+    echo "# People (not included)" > "${TARGET_DIR}/people/README.md"
+    echo "" >> "${TARGET_DIR}/people/README.md"
+    echo "This agent was created without the people directory." >> "${TARGET_DIR}/people/README.md"
+    echo "To add it, re-fork with \`--without-people\` removed, or copy from the template." >> "${TARGET_DIR}/people/README.md"
+fi
+
+# Copy templates (always included)
 copy_file journal/templates/daily.md
 copy_file tasks/templates/initial-agent-setup.md
 
@@ -196,8 +277,8 @@ else
 fi
 
 # If pre-commit is installed
-# Install pre-commit hooks
-command -v pre-commit > /dev/null && (cd "${TARGET_DIR}" && pre-commit install)
+# Install pre-commit hooks (may fail if core.hooksPath is set)
+command -v pre-commit > /dev/null && (cd "${TARGET_DIR}" && pre-commit install) || true
 
 # Stage files first, then run pre-commit to format them
 (cd "${TARGET_DIR}" && git add .)
@@ -215,19 +296,31 @@ fi
 TARGET_DIR_RELATIVE=$(python3 -c "import os, sys; print(os.path.relpath('${TARGET_DIR}', start='$(pwd)'))")
 
 # Build success message
-DOTFILES_MSG=""
+EXTRAS_MSG=""
 if [ "$WITH_DOTFILES" = true ]; then
-    DOTFILES_MSG="
+    EXTRAS_MSG="${EXTRAS_MSG}
 Dotfiles included! To activate git hooks:
   cd ${TARGET_DIR_RELATIVE}/dotfiles && ./install.sh
 "
 fi
 
+# Show what systems were included
+SYSTEMS_INCLUDED="journal, tasks, knowledge, lessons"
+[ "$WITH_STATE" = true ] && SYSTEMS_INCLUDED="${SYSTEMS_INCLUDED}, state/queues"
+[ "$WITH_AUTONOMOUS" = true ] && SYSTEMS_INCLUDED="${SYSTEMS_INCLUDED}, autonomous runs"
+[ "$WITH_PEOPLE" = true ] && SYSTEMS_INCLUDED="${SYSTEMS_INCLUDED}, people"
+[ "$WITH_PROJECTS" = true ] && SYSTEMS_INCLUDED="${SYSTEMS_INCLUDED}, projects"
+[ "$WITH_DOTFILES" = true ] && SYSTEMS_INCLUDED="${SYSTEMS_INCLUDED}, dotfiles"
+
 echo "
-Agent workspace created successfully! Next steps:
+Agent workspace created successfully!
+
+Systems included: ${SYSTEMS_INCLUDED}
+
+Next steps:
 1. cd ${TARGET_DIR_RELATIVE}
 2. Start the agent with: gptme \"hello\"
 3. The agent will guide you through the setup interview
 4. Follow the agent's instructions to establish its identity
-${DOTFILES_MSG}
+${EXTRAS_MSG}
 The new agent workspace is ready in: ${TARGET_DIR}"
