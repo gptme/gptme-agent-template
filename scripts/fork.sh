@@ -84,10 +84,10 @@ while [[ $# -gt 0 ]]; do
             echo "Examples:"
             echo "  $0 alice-agent Alice                             # Full-featured agent"
             echo "  $0 --minimal simple-bot SimpleBot                # Minimal agent"
-            echo "  $0 --minimal --with-state ~/bob bob             # Minimal + state/queues"
-            echo "  $0 --minimal --with-autonomous ~/bob bob        # Minimal + autonomous runs"
-            echo "  $0 --without-autonomous ~/bob bob               # No autonomous runs"
-            echo "  $0 --with-dotfiles ~/bob bob                    # Include git hooks"
+            echo "  $0 --minimal --with-state ./bob Bob             # Minimal + state/queues"
+            echo "  $0 --minimal --with-autonomous ./bob Bob        # Minimal + autonomous runs"
+            echo "  $0 --without-autonomous ./bob Bob               # No autonomous runs"
+            echo "  $0 --with-dotfiles ./bob Bob                    # Include git hooks"
             exit 0
             ;;
         -*)
