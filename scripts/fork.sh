@@ -20,16 +20,32 @@ while [[ $# -gt 0 ]]; do
             WITH_DOTFILES=true
             shift
             ;;
+        --with-autonomous)
+            WITH_AUTONOMOUS=true
+            shift
+            ;;
         --without-autonomous)
             WITH_AUTONOMOUS=false
+            shift
+            ;;
+        --with-people)
+            WITH_PEOPLE=true
             shift
             ;;
         --without-people)
             WITH_PEOPLE=false
             shift
             ;;
+        --with-projects)
+            WITH_PROJECTS=true
+            shift
+            ;;
         --without-projects)
             WITH_PROJECTS=false
+            shift
+            ;;
+        --with-state)
+            WITH_STATE=true
             shift
             ;;
         --without-state)
@@ -58,14 +74,20 @@ while [[ $# -gt 0 ]]; do
             echo "  --without-people       Exclude people directory and templates"
             echo "  --without-projects     Exclude projects directory"
             echo "  --without-state        Exclude state/queue system"
+            echo "  --with-autonomous      Include autonomous run scripts (use with --minimal)"
+            echo "  --with-people          Include people directory and templates (use with --minimal)"
+            echo "  --with-projects        Include projects directory (use with --minimal)"
+            echo "  --with-state           Include state/queue system (use with --minimal)"
             echo "  --with-dotfiles        Include dotfiles (global git hooks)"
             echo "  --help, -h             Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0 alice-agent Alice                    # Full-featured agent"
-            echo "  $0 --minimal simple-bot SimpleBot       # Minimal agent"
-            echo "  $0 --without-autonomous ~/bob bob       # No autonomous runs"
-            echo "  $0 --with-dotfiles ~/bob bob            # Include git hooks"
+            echo "  $0 alice-agent Alice                             # Full-featured agent"
+            echo "  $0 --minimal simple-bot SimpleBot                # Minimal agent"
+            echo "  $0 --minimal --with-state ~/bob bob             # Minimal + state/queues"
+            echo "  $0 --minimal --with-autonomous ~/bob bob        # Minimal + autonomous runs"
+            echo "  $0 --without-autonomous ~/bob bob               # No autonomous runs"
+            echo "  $0 --with-dotfiles ~/bob bob                    # Include git hooks"
             exit 0
             ;;
         -*)
