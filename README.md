@@ -60,6 +60,7 @@ Before forking or using this template, ensure you have the required dependencies
 
 ## Quick Start
 
+<!--template-->
 The easiest way to create a new agent from this template is with the `gptme-agent` CLI (included with gptme):
 
 ```sh
@@ -95,12 +96,21 @@ claude
 ```
 
 The `scripts/build-system-prompt.sh` script reads `gptme.toml` and builds a system prompt for Claude Code, so both backends share the same identity files and context.
+<!--/template-->
+
+Run the agent interactively with gptme or Claude Code:
+
+```sh
+gptme "hello"
+# or: claude
+```
 
 <!--autonomous-->
 ## Autonomous Operation
 
-Agents can run autonomously on a schedule using systemd (Linux) or launchd (macOS):
+Agents can run autonomously on a schedule using systemd (Linux) or launchd (macOS).
 
+<!--template-->
 ```sh
 # Install as a system service (runs every 30 minutes by default)
 gptme-agent install
@@ -114,6 +124,9 @@ gptme-agent logs --follow       # Monitor logs
 gptme-agent run                 # Trigger immediate run
 gptme-agent stop                # Pause scheduled runs
 ```
+<!--/template-->
+
+See the [gptme agents documentation](https://gptme.org/docs/agents.html) for service installation and management commands.
 
 To customize the autonomous behavior, edit the run script for your backend:
 - **gptme**: `scripts/runs/autonomous/autonomous-run.sh`
@@ -129,6 +142,7 @@ To customize the autonomous behavior, edit the run script for your backend:
 - **Multi-backend**: Supports both gptme and Claude Code backends
 <!--/autonomous-->
 
+<!--template-->
 ## Forking (manual alternative)
 
 If you prefer to fork manually instead of using `gptme-agent create`:
@@ -142,6 +156,7 @@ git submodule update --init --recursive
 ```
 
 Then follow the instructions in the output.
+<!--/template-->
 
 ## Workspace Structure
 

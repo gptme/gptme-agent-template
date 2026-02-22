@@ -181,11 +181,15 @@ function copy_file() {
 
     # Process all files, whether dst is a file or directory
     find "$dst" -type f -print0 | while IFS= read -r -d '' file; do
-        # Replace template strings
+        # Strip template sections FIRST (before name replacement)
+        # This prevents replacing "gptme-agent" in template-only content
+        # (e.g. CLI tool references like "gptme-agent create" that should not be renamed)
+        perl -i -pe 'BEGIN{undef $/;} s/<!--template-->.*?<!--\/template-->\n?//gs' "$file"
+        # Replace template strings in remaining content
         perl -i -pe "s/${NAME_TEMPLATE}-template/${NEW_AGENT}/g" "$file"
         perl -i -pe "s/${NAME_TEMPLATE}/${NEW_AGENT}/g" "$file"
-        # Strip template comments
-        perl -i -pe 'BEGIN{undef $/;} s/<!--template-->.*?<!--\/template-->//gs' "$file"
+        # Collapse 3+ consecutive blank lines to 2 (cleanup after template stripping)
+        perl -i -pe 'BEGIN{undef $/;} s/\n{4,}/\n\n\n/gs' "$file"
     done
 
     # Make shell scripts executable
