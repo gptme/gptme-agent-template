@@ -13,7 +13,19 @@ WITH_PEOPLE=true
 WITH_PROJECTS=true
 WITH_STATE=true
 
-# Parse options
+# Two-pass parsing: process --minimal first so --with-* flags override it
+# regardless of argument order (e.g. --with-autonomous --minimal works)
+for arg in "$@"; do
+    if [[ "$arg" == "--minimal" ]]; then
+        WITH_AUTONOMOUS=false
+        WITH_PEOPLE=false
+        WITH_PROJECTS=false
+        WITH_STATE=false
+        break
+    fi
+done
+
+# Parse options (second pass: --with-* and --without-* override --minimal)
 while [[ $# -gt 0 ]]; do
     case $1 in
         --with-dotfiles)
@@ -53,10 +65,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --minimal)
-            WITH_AUTONOMOUS=false
-            WITH_PEOPLE=false
-            WITH_PROJECTS=false
-            WITH_STATE=false
+            # Already handled in first pass
             shift
             ;;
         --help|-h)
@@ -74,10 +83,10 @@ while [[ $# -gt 0 ]]; do
             echo "  --without-people       Exclude people directory and templates"
             echo "  --without-projects     Exclude projects directory"
             echo "  --without-state        Exclude state/queue system"
-            echo "  --with-autonomous      Include autonomous run scripts (use with --minimal)"
-            echo "  --with-people          Include people directory and templates (use with --minimal)"
-            echo "  --with-projects        Include projects directory (use with --minimal)"
-            echo "  --with-state           Include state/queue system (use with --minimal)"
+            echo "  --with-autonomous      Include autonomous run scripts (use with --minimal, any order)"
+            echo "  --with-people          Include people directory (use with --minimal, any order)"
+            echo "  --with-projects        Include projects directory (use with --minimal, any order)"
+            echo "  --with-state           Include state/queue system (use with --minimal, any order)"
             echo "  --with-dotfiles        Include dotfiles (global git hooks)"
             echo "  --help, -h             Show this help message"
             echo ""
@@ -214,6 +223,8 @@ if [ "$WITH_AUTONOMOUS" = false ]; then
     echo "" >> "${TARGET_DIR}/scripts/runs/autonomous/README.md"
     echo "This agent was created without autonomous run infrastructure." >> "${TARGET_DIR}/scripts/runs/autonomous/README.md"
     echo "To add it, re-fork without \`--without-autonomous\`, or copy from the template." >> "${TARGET_DIR}/scripts/runs/autonomous/README.md"
+    # Strip autonomous sections from README
+    perl -i -0pe 's/<!--autonomous-->.*?<!--\/autonomous-->\n?//gs' "${TARGET_DIR}/README.md"
 fi
 
 # Copy base knowledge
@@ -236,6 +247,8 @@ else
     echo "" >> "${TARGET_DIR}/state/README.md"
     echo "This agent was created without the state/queue system." >> "${TARGET_DIR}/state/README.md"
     echo "To add it, re-fork without the \`--without-state\` flag, or copy from the template." >> "${TARGET_DIR}/state/README.md"
+    # Strip state sections from README
+    perl -i -0pe 's/<!--state-->.*?<!--\/state-->\n?//gs' "${TARGET_DIR}/README.md"
 fi
 
 # Optional: projects directory
@@ -262,7 +275,12 @@ else
     echo "" >> "${TARGET_DIR}/people/README.md"
     echo "This agent was created without the people directory." >> "${TARGET_DIR}/people/README.md"
     echo "To add it, re-fork without the \`--without-people\` flag, or copy from the template." >> "${TARGET_DIR}/people/README.md"
+    # Strip people sections from README
+    perl -i -0pe 's/<!--people-->.*?<!--\/people-->\n?//gs' "${TARGET_DIR}/README.md"
 fi
+
+# Clean up remaining conditional comment tags (keep content, remove markers)
+perl -i -pe 's/<!--(?:autonomous|people|state|projects)-->//g; s/<!--\/(?:autonomous|people|state|projects)-->//g' "${TARGET_DIR}/README.md"
 
 # Copy templates (always included)
 copy_file journal/templates/daily.md
