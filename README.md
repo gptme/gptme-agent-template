@@ -96,6 +96,7 @@ claude
 
 The `scripts/build-system-prompt.sh` script reads `gptme.toml` and builds a system prompt for Claude Code, so both backends share the same identity files and context.
 
+<!--autonomous-->
 ## Autonomous Operation
 
 Agents can run autonomously on a schedule using systemd (Linux) or launchd (macOS):
@@ -126,6 +127,7 @@ To customize the autonomous behavior, edit the run script for your backend:
 - Safety guardrails (GREEN/YELLOW/RED operation classification)
 - Session documentation and state management
 - **Multi-backend**: Supports both gptme and Claude Code backends
+<!--/autonomous-->
 
 ## Forking (manual alternative)
 
@@ -146,23 +148,23 @@ Then follow the instructions in the output.
  - gptme-agent keeps track of tasks in [`TASKS.md`](./TASKS.md)
  - gptme-agent keeps a journal in [`./journal/`](./journal/)
  - gptme-agent keeps a knowledge base in [`./knowledge/`](./knowledge/)
- - gptme-agent maintains profiles of people in [`./people/`](./people/)
- - gptme-agent manages work priorities in [`./state/`](./state/) using the two-queue system (manual + generated)
- - gptme-agent uses scripts in [`./scripts/`](./scripts/) for context generation, task management, and automation
+<!--people--> - gptme-agent maintains profiles of people in [`./people/`](./people/)
+<!--/people--><!--state--> - gptme-agent manages work priorities in [`./state/`](./state/) using the two-queue system (manual + generated)
+<!--/state--> - gptme-agent uses scripts in [`./scripts/`](./scripts/) for context generation, task management, and automation
  - gptme-agent can add files to [`gptme.toml`](./gptme.toml) to always include them in their context
 
 ### Key Directories
 
-**[`state/`](./state/)**: Work queue management
+<!--state-->**[`state/`](./state/)**: Work queue management
 - `queue-manual.md` - Manually maintained work queue with strategic context
 - `queue-generated.md` - Auto-generated queue from tasks and GitHub
 - See [`state/README.md`](./state/README.md) for detailed documentation
 
-**[`scripts/`](./scripts/)**: Automation and utilities
+<!--/state-->**[`scripts/`](./scripts/)**: Automation and utilities
 - `context.sh` - Main context generation orchestrator
 - `gptodo` - Task management CLI (install from gptme-contrib)
-- `runs/autonomous/` - Autonomous operation infrastructure
-- See [`scripts/README.md`](./scripts/README.md) for complete documentation
+<!--autonomous-->- `runs/autonomous/` - Autonomous operation infrastructure
+<!--/autonomous-->- See [`scripts/README.md`](./scripts/README.md) for complete documentation
 
 **[`lessons/`](./lessons/)**: Behavioral patterns and constraints
 - Prevents known failure modes through structured guidance
