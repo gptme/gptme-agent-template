@@ -6,6 +6,7 @@ This directory contains scripts for agent workspace automation and operations.
 
 ```txt
 scripts/
+├── install-deps.sh        # Check and install dependencies
 ├── context.sh              # Main context generation orchestrator
 ├── context-journal.sh      # Recent journal entries context
 ├── context-workspace.sh    # Workspace files overview

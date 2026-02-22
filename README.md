@@ -29,12 +29,12 @@ Before forking or using this template, ensure you have the required dependencies
 
 **Quick Check:**
 ```sh
-./install-deps.sh
+./scripts/install-deps.sh
 ```
 
 **Auto-Install (where possible):**
 ```sh
-./install-deps.sh --install
+./scripts/install-deps.sh --install
 ```
 
 ### Required Dependencies

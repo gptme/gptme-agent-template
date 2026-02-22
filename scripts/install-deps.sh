@@ -3,8 +3,8 @@
 # Run this BEFORE forking to ensure all prerequisites are installed.
 #
 # Usage:
-#   ./install-deps.sh          # Check all dependencies
-#   ./install-deps.sh --install # Auto-install where possible
+#   ./scripts/install-deps.sh          # Check all dependencies
+#   ./scripts/install-deps.sh --install # Auto-install where possible
 
 set -e
 
@@ -158,7 +158,7 @@ else
         echo "Some dependencies were auto-installed. Please restart your shell and re-run this script."
     else
         echo "Run with --install to auto-install where possible:"
-        echo "  ./install-deps.sh --install"
+        echo "  ./scripts/install-deps.sh --install"
     fi
     exit 1
 fi
