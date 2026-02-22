@@ -86,7 +86,20 @@ else
     log_fail "Agent name not found in gptme.toml"
 fi
 
-# Test 5: Context script generates output
+# Test 5: No "gptme-agent" CLI tool references leaked into forked content
+# The fork should replace "gptme-agent" as the agent name but NOT include
+# references to the gptme-agent CLI tool (those are template-only)
+log_test "No gptme-agent CLI tool references in forked workspace"
+# Check non-submodule, non-git files for "gptme-agent" (should be zero)
+leaked_refs=$(grep -r "gptme-agent" --include="*.md" --include="*.toml" . 2>/dev/null | grep -v ".git/" | grep -v "gptme-contrib/" | grep -v "knowledge/agent-forking.md" | grep -v "knowledge/forking-workspace.md" || true)
+if [[ -z "$leaked_refs" ]]; then
+    log_pass "No gptme-agent references leaked into forked content"
+else
+    log_fail "Found leaked gptme-agent references in forked workspace:"
+    echo "$leaked_refs"
+fi
+
+# Test 6: Context script generates output
 # Per Erik's request: actually test context generation, handle missing tools gracefully
 log_test "Context script execution"
 if [[ -f scripts/context.sh ]] && [[ -x scripts/context.sh ]]; then
