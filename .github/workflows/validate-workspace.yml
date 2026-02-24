@@ -72,4 +72,17 @@ jobs:
           exit 1
         fi
 
+        # Regression test: verify no "gptme-agent" references remain
+        # (except in .git/ and gptme-contrib/ submodule which are not user-facing)
+        # Regression test for template string replacement
+        LEAKS=$(grep -r "gptme-agent" --include="*.md" --include="*.toml" --include="*.yaml" --include="*.yml" --include="*.sh" . \
+          --exclude-dir=.git --exclude-dir=gptme-contrib 2>/dev/null || true)
+        if [ -n "$LEAKS" ]; then
+          echo "❌ Found unreplaced 'gptme-agent' references in forked workspace:"
+          echo "$LEAKS"
+          exit 1
+        else
+          echo "✅ No 'gptme-agent' references leaked into forked workspace"
+        fi
+
         echo "=== All fork tests passed ==="
