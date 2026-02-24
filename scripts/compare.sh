@@ -1,81 +1,145 @@
-# Compare this agent harness to another, useful when checking for updates/changes to upstream
-# Usage: ./compare.sh <path_to_other_agent>
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Compare this template harness to an existing agent workspace.
 #
-echo "Comparing this agent to another..."
+# Usage:
+#   ./scripts/compare.sh <path_to_agent>
+#   ./scripts/compare.sh --markdown <path_to_agent>
+#
+# Exit codes:
+#   0: no differences
+#   1: differences found
+#   2: usage or path error
 
-set -e
+MARKDOWN=false
 
-# Get the path to the other agent
-if [ -z "$1" ]; then
-  echo "Usage: ./compare.sh <path_to_other_agent>"
-  exit 1
+POSITIONAL=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --markdown)
+            MARKDOWN=true
+            shift
+            ;;
+        -h|--help)
+            cat <<'EOF'
+Compare template harness files against an existing agent workspace.
+
+Usage:
+  ./scripts/compare.sh [--markdown] <path_to_agent>
+
+Options:
+  --markdown   Print each diff as a fenced code block for easy sharing
+  -h, --help   Show this help
+
+Examples:
+  ./scripts/compare.sh ~/my-agent
+  ./scripts/compare.sh --markdown ~/my-agent
+  ./scripts/compare.sh ~/my-agent --markdown
+EOF
+            exit 0
+            ;;
+        -*)
+            echo "Error: Unknown option: $1" >&2
+            exit 2
+            ;;
+        *)
+            POSITIONAL+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if [[ ${#POSITIONAL[@]} -ne 1 ]]; then
+    echo "Usage: ./scripts/compare.sh [--markdown] <path_to_agent>" >&2
+    exit 2
 fi
 
-AGENT_PATH=$1
+TEMPLATE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+AGENT_PATH="${POSITIONAL[0]}"
 
-# Compare the two agents
-# Including files in the agent harness:
-#  - ARCHITECTURE.md
-#  - scripts/
-#
-# Excluding information about the agent itself, like:
-#  - README.md
-#  - ABOUT.md
-#  - journal/
-#  - knowledge/
-#  - people/
-#  - tweets/
-#  - email/
-
-function run_codeblock() {
-    # usage: run_codeblock diff "file1" "file2"
-    # outputs the result of a command as a ```<command> codeblock
-    echo
-    echo "\`\`\`$@"
-    eval "$@" || true
-    echo "\`\`\`"
-    echo
-}
-
-function diff_codeblock() {
-    run_codeblock diff -u -r "$1" "$AGENT_PATH/$1"
-}
-
-# Store diffs in a variable
-diffs=""
-diffs+=$(diff_codeblock "ARCHITECTURE.md")
-diffs+=$(diff_codeblock "scripts/")
-diffs+=$(diff_codeblock ".pre-commit-config.yaml")
-if [ -z "$diffs" ]; then
-  echo "No differences found, exiting..."
-  exit 0
+if [[ "$AGENT_PATH" == ~* ]]; then
+    AGENT_PATH="${AGENT_PATH/#~/$HOME}"
 fi
 
-echo "Differences found:"
-printf "%s\n" "$diffs"
+if [[ ! -d "$AGENT_PATH" ]]; then
+    echo "Error: Agent path does not exist: $AGENT_PATH" >&2
+    exit 2
+fi
 
-# Ask if the user wants to sync the changes using a gptme agent
+if command -v realpath >/dev/null 2>&1; then
+    AGENT_PATH="$(realpath "$AGENT_PATH")"
+fi
+
+# Files/directories intended to stay mostly shared between template and forks.
+# Keep identity/docs (ABOUT, README, journal, tasks content) out of this list.
+declare -a HARNESS_PATHS=(
+    "ARCHITECTURE.md"
+    "TASKS.md"
+    "TOOLS.md"
+    ".pre-commit-config.yaml"
+    "scripts"
+)
+
+found_diff=false
+
+print_diff() {
+    local relpath="$1"
+    local left="$2"
+    local right="$3"
+
+    if [[ "$MARKDOWN" == true ]]; then
+        echo
+        echo '```shell'
+        echo "diff -u -r '$left' '$right'"
+        diff -u -r "$left" "$right" || true
+        echo '```'
+        echo
+    else
+        echo
+        echo "=== $relpath ==="
+        diff -u -r "$left" "$right" || true
+    fi
+}
+
+echo "Comparing template harness at: $TEMPLATE_ROOT"
+echo "Against agent workspace at:  $AGENT_PATH"
+
+for rel in "${HARNESS_PATHS[@]}"; do
+    left="$TEMPLATE_ROOT/$rel"
+    right="$AGENT_PATH/$rel"
+
+    if [[ ! -e "$left" ]]; then
+        echo "Warning: Missing in template, skipping: $rel"
+        continue
+    fi
+
+    if [[ ! -e "$right" ]]; then
+        found_diff=true
+        echo "Missing in agent: $rel"
+        continue
+    fi
+
+    if ! diff -q -r "$left" "$right" >/dev/null 2>&1; then
+        found_diff=true
+        print_diff "$rel" "$left" "$right"
+    fi
+done
+
+if [[ "$found_diff" == false ]]; then
+    echo "No harness differences found."
+    exit 0
+fi
+
 echo
-read -p "Would you like to sync these changes to the gptme agent? (y/n) " -r response
+cat <<EOF
+Differences found.
 
-if [ "$response" != "y" ]; then
-  echo "Exiting..."
-  exit 0
-fi
+Suggested next step:
+- Keep agent-specific changes in the agent workspace.
+- Upstream generic improvements to gptme-agent-template.
+- Re-run this script after syncing to verify drift is resolved.
+EOF
 
-printf "%s\n" "$diffs" | gptme "We need to synchronize changes between two repositories:
-1. The template repository (source of core functionality and best practices)
-2. The agent instance (which may have improvements that should be upstreamed)
-
-For each difference found, please:
-- Analyze whether the change belongs in the template, the instance, or both
-- Consider:
-  - Is it a generic improvement that benefits all agents? (→ template)
-  - Is it instance-specific customization? (→ instance)
-  - Is it a bug fix or enhancement that works for both? (→ both)
-  - Does it maintain separation between template and instance concerns?
-
-Here are the differences found. Please analyze each and suggest appropriate synchronization:"
-
-# Exit with the status of the last command
-exit $?
+exit 1
