@@ -195,8 +195,9 @@ The journal system supports two formats:
 - Usage: `./scripts/search.sh "query"`
 
 **compare.sh**:
-- Compare files or directories
-- Usage: `./scripts/compare.sh file1 file2`
+- Compare template harness files against an existing agent workspace
+- Usage: `./scripts/compare.sh [--markdown] <path_to_agent>`
+- Exit codes: `0` (no diff), `1` (differences found), `2` (usage/path error)
 
 **fork.py**:
 - Automate agent forking from template
