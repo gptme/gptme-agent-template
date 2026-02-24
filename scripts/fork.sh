@@ -349,8 +349,9 @@ if command -v pre-commit > /dev/null; then
     (cd "${TARGET_DIR}" && git add .)
 fi
 
-# Commit initial files
-(cd "${TARGET_DIR}" && git commit -m "feat: initialize ${NEW_AGENT} agent workspace")
+# Commit initial files (--no-verify: hooks may require tools like uv not yet available;
+# the explicit pre-commit run above already handled formatting)
+(cd "${TARGET_DIR}" && git commit --no-verify -m "feat: initialize ${NEW_AGENT} agent workspace")
 
 # Make the target directory relative to the current directory (prettier output)
 TARGET_DIR_RELATIVE=$(python3 -c "import os, sys; print(os.path.relpath('${TARGET_DIR}', start='$(pwd)'))")
