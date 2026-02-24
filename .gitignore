@@ -58,11 +58,14 @@ state/sessions/
 # Generated embeddings
 embeddings/
 
-# Large binary files (track selectively via .gitattributes if needed)
+# Large/generated JSON files (add exceptions for config files you need to track)
 *.json
 *.jsonl
 !state/*.json
 !.claude/settings.json
+!package.json
+!tsconfig.json
+!*.config.json
 *.png
 *.jpg
 *.pdf
