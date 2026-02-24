@@ -63,6 +63,7 @@ acquire_lock() {
 }
 
 release_lock() {
+    # shellcheck disable=SC2317  # Called by trap, not directly
     rm -f "$LOCKFILE"
 }
 

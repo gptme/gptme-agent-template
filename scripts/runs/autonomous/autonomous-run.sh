@@ -19,7 +19,9 @@ set -e  # Exit on error
 # === CONFIGURATION (CUSTOMIZE THESE) ===
 AGENT_NAME="YourAgent"  # Replace with your agent's name
 WORKSPACE="/path/to/your/workspace"  # Replace with your workspace path
+# shellcheck disable=SC2034  # These are template placeholders for users to customize
 REPO_OWNER="your-github-username"  # Replace with your GitHub username
+# shellcheck disable=SC2034  # These are template placeholders for users to customize
 REPO_NAME="your-agent-workspace"  # Replace with your workspace repo name
 SCRIPT_TIMEOUT=3000  # 50 minutes in seconds (allows hourly scheduling with buffer)
 # ========================================
@@ -35,11 +37,15 @@ log() {
 
 # Cleanup function
 cleanup() {
+    # shellcheck disable=SC2317  # Called by trap, not directly
     log "Cleaning up..."
     # Kill any gptme child processes
+    # shellcheck disable=SC2317  # Called by trap, not directly
     pkill -P $$ gptme 2>/dev/null || true
+    # shellcheck disable=SC2317  # Called by trap, not directly
     sleep 1
     # Clean up temporary prompt file
+    # shellcheck disable=SC2317  # Called by trap, not directly
     [ -f "$PROMPT_FILE" ] && rm -f "$PROMPT_FILE"
 }
 
@@ -74,14 +80,16 @@ else
 fi
 
 # Queue file paths (customize queue system as needed)
+# shellcheck disable=SC2034  # Template placeholders for agent customization
 MANUAL_QUEUE="$WORKSPACE/state/queue-manual.md"
+# shellcheck disable=SC2034  # Template placeholders for agent customization
 GENERATED_QUEUE="$WORKSPACE/state/queue-generated.md"
 
 PROMPT_FILE=/tmp/autonomous-prompt-$$.txt
 
 # Create autonomous operation prompt
 # CUSTOMIZE THIS SECTION with your agent's specific workflow and guidelines
-cat > $PROMPT_FILE <<EOF
+cat > "$PROMPT_FILE" <<EOF
 You are $AGENT_NAME, running autonomously.
 
 **Current Time**: $(date --iso=minutes)
@@ -164,17 +172,17 @@ EOF
 
 # Run gptme with the autonomous prompt (with timeout)
 log "Starting gptme session..."
-timeout $SCRIPT_TIMEOUT gptme --non-interactive "$PROMPT_FILE" 2>&1 || EXIT_CODE=$?
+timeout "$SCRIPT_TIMEOUT" gptme --non-interactive "$PROMPT_FILE" 2>&1 || EXIT_CODE=$?
 EXIT_CODE=${EXIT_CODE:-0}
 
 # Check exit status
-if [ $EXIT_CODE -eq 0 ]; then
+if [ "$EXIT_CODE" -eq 0 ]; then
     log "Autonomous run completed successfully"
     exit 0
-elif [ $EXIT_CODE -eq 124 ]; then
+elif [ "$EXIT_CODE" -eq 124 ]; then
     log "WARNING: Autonomous run timed out after ${SCRIPT_TIMEOUT}s"
     exit 124
 else
     log "ERROR: Autonomous run failed with exit code $EXIT_CODE"
-    exit $EXIT_CODE
+    exit "$EXIT_CODE"
 fi
