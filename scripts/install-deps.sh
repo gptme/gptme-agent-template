@@ -33,7 +33,8 @@ check_cmd() {
     local install_hint=$3
 
     if command -v "$cmd" &> /dev/null; then
-        local version=$("$cmd" --version 2>/dev/null | head -1 || echo "installed")
+        local version
+        version=$("$cmd" --version 2>/dev/null | head -1 || echo "installed")
         echo -e "${GREEN}✓${NC} $name: $version"
         return 0
     else

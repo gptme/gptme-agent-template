@@ -19,8 +19,8 @@ set -e  # Exit on error
 # === CONFIGURATION (CUSTOMIZE THESE) ===
 AGENT_NAME="YourAgent"  # Replace with your agent's name
 WORKSPACE="/path/to/your/workspace"  # Replace with your workspace path
-REPO_OWNER="your-github-username"  # Replace with your GitHub username
-REPO_NAME="your-agent-workspace"  # Replace with your workspace repo name
+export REPO_OWNER="your-github-username"  # Replace with your GitHub username
+export REPO_NAME="your-agent-workspace"  # Replace with your workspace repo name
 SCRIPT_TIMEOUT=3000  # 50 minutes in seconds (allows hourly scheduling with buffer)
 # ========================================
 
@@ -74,8 +74,8 @@ else
 fi
 
 # Queue file paths (customize queue system as needed)
-MANUAL_QUEUE="$WORKSPACE/state/queue-manual.md"
-GENERATED_QUEUE="$WORKSPACE/state/queue-generated.md"
+export MANUAL_QUEUE="$WORKSPACE/state/queue-manual.md"
+export GENERATED_QUEUE="$WORKSPACE/state/queue-generated.md"
 
 PROMPT_FILE=/tmp/autonomous-prompt-$$.txt
 

@@ -320,7 +320,7 @@ fi
 cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
 # Set creation timestamp if gptodo is available (optional tool)
 if command -v gptodo > /dev/null 2>&1; then
-    (cd "${TARGET_DIR}" && gptodo edit initial-agent-setup --set created $(iso_datetime))
+    (cd "${TARGET_DIR}" && gptodo edit initial-agent-setup --set created "$(iso_datetime)")
 else
     echo "Note: gptodo not installed - skipping timestamp update"
     echo "Install with: uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo"

@@ -12,7 +12,7 @@ export LC_ALL=en_US.UTF-8
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Make all component scripts executable
-chmod +x $SCRIPT_DIR/context-*.sh
+chmod +x "$SCRIPT_DIR"/context-*.sh
 
 # Write context summary header
 echo "# Context Summary"
@@ -25,7 +25,7 @@ echo "---"
 echo
 
 # Run each component script
-$SCRIPT_DIR/context-journal.sh
+"$SCRIPT_DIR"/context-journal.sh
 echo
 echo -e "# Tasks\n"
 # gptodo is the task management CLI (replaces deprecated tasks.py)
@@ -37,7 +37,7 @@ else
     echo -e "See: uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo\n"
 fi
 echo
-$SCRIPT_DIR/context-workspace.sh
+"$SCRIPT_DIR"/context-workspace.sh
 echo
 echo -e "# Git\n"
 echo '```git status -vv'
