@@ -8,6 +8,12 @@ repos:
       - id: check-symlinks
       - id: destroyed-symlinks
       - id: check-added-large-files
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        # Exclude gptme-contrib submodule (has its own checks) and dotfiles symlinks
+        exclude: ^gptme-contrib/|^dotfiles/
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.9
     hooks:

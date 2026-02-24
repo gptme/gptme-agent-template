@@ -29,7 +29,7 @@ ALL_JOURNALS=$(
     # Legacy flat format
     find journal -maxdepth 1 -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.md" -type f 2>/dev/null
     # New subdirectory format
-    find journal -mindepth 2 -maxdepth 2 -name "*.md" -type f 2>/dev/null | while read f; do
+    find journal -mindepth 2 -maxdepth 2 -name "*.md" -type f 2>/dev/null | while read -r f; do
         parent=$(basename "$(dirname "$f")")
         if echo "$parent" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
             echo "$f"
@@ -50,7 +50,8 @@ fi
 # - Subdirectory: journal/2025-12-24/topic.md -> extract from parent dir
 extract_date_from_path() {
     local path="$1"
-    local parent=$(basename "$(dirname "$path")")
+    local parent
+    parent=$(basename "$(dirname "$path")")
     # Check if parent dir is a date (subdirectory format)
     if echo "$parent" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
         echo "$parent"
@@ -72,7 +73,7 @@ JOURNALS_BY_MTIME=$(
         if [ -d "journal/${DATE}" ]; then
             find "journal/${DATE}" -maxdepth 1 -name "*.md" -type f 2>/dev/null
         fi
-    } | while read f; do stat -c '%Y %n' "$f" 2>/dev/null; done | sort -rn | cut -d' ' -f2
+    } | while read -r f; do stat -c '%Y %n' "$f" 2>/dev/null; done | sort -rn | cut -d' ' -f2
 )
 
 # Determine if this is today's or a past journal
@@ -105,7 +106,7 @@ fi
 MAX_FULL_ENTRIES=10
 
 # Get the most recent N entries (by mtime), then re-sort chronologically for display
-RECENT_JOURNALS=$(echo "$JOURNALS_BY_MTIME" | head -n $MAX_FULL_ENTRIES | while read f; do stat -c '%Y %n' "$f"; done | sort -n | cut -d' ' -f2)
+RECENT_JOURNALS=$(echo "$JOURNALS_BY_MTIME" | head -n $MAX_FULL_ENTRIES | while read -r f; do stat -c '%Y %n' "$f"; done | sort -n | cut -d' ' -f2)
 OLDER_JOURNALS=$(echo "$JOURNALS_BY_MTIME" | tail -n +$((MAX_FULL_ENTRIES + 1)))
 
 # Output most recent journal files in full

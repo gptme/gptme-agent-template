@@ -178,6 +178,7 @@ fi
 # Note: fork.sh is NOT copied to forked agents (stays in template only)
 log_test "Script execute permissions"
 scripts_with_exec=true
+# shellcheck disable=SC2043  # Single-item loop for easy future expansion
 for script in scripts/context.sh; do
     if [[ -f "$script" ]] && [[ ! -x "$script" ]]; then
         log_fail "Missing execute permission: $script"

@@ -223,10 +223,12 @@ if [ "$WITH_AUTONOMOUS" = false ]; then
     rm -rf "${TARGET_DIR}/scripts/runs"
     # Create stub so doc links resolve
     mkdir -p "${TARGET_DIR}/scripts/runs/autonomous"
-    echo "# Autonomous Runs (not included)" > "${TARGET_DIR}/scripts/runs/autonomous/README.md"
-    echo "" >> "${TARGET_DIR}/scripts/runs/autonomous/README.md"
-    echo "This agent was created without autonomous run infrastructure." >> "${TARGET_DIR}/scripts/runs/autonomous/README.md"
-    echo "To add it, re-fork without \`--without-autonomous\`, or copy from the template." >> "${TARGET_DIR}/scripts/runs/autonomous/README.md"
+    {
+        echo "# Autonomous Runs (not included)"
+        echo ""
+        echo "This agent was created without autonomous run infrastructure."
+        echo "To add it, re-fork without \`--without-autonomous\`, or copy from the template."
+    } > "${TARGET_DIR}/scripts/runs/autonomous/README.md"
     # Strip autonomous sections from README
     perl -i -0pe 's/<!--autonomous-->.*?<!--\/autonomous-->\n?//gs' "${TARGET_DIR}/README.md"
 fi
@@ -247,10 +249,12 @@ else
     echo "  Skipping: state/queue system"
     # Create stub so doc links resolve
     mkdir -p "${TARGET_DIR}/state"
-    echo "# State (not included)" > "${TARGET_DIR}/state/README.md"
-    echo "" >> "${TARGET_DIR}/state/README.md"
-    echo "This agent was created without the state/queue system." >> "${TARGET_DIR}/state/README.md"
-    echo "To add it, re-fork without the \`--without-state\` flag, or copy from the template." >> "${TARGET_DIR}/state/README.md"
+    {
+        echo "# State (not included)"
+        echo ""
+        echo "This agent was created without the state/queue system."
+        echo "To add it, re-fork without the \`--without-state\` flag, or copy from the template."
+    } > "${TARGET_DIR}/state/README.md"
     # Strip state sections from README
     perl -i -0pe 's/<!--state-->.*?<!--\/state-->\n?//gs' "${TARGET_DIR}/README.md"
 fi
@@ -262,10 +266,12 @@ else
     echo "  Skipping: projects directory"
     # Create stub so gptme.toml reference to projects/README.md doesn't fail
     mkdir -p "${TARGET_DIR}/projects"
-    echo "# Projects (not included)" > "${TARGET_DIR}/projects/README.md"
-    echo "" >> "${TARGET_DIR}/projects/README.md"
-    echo "This agent was created without the projects directory." >> "${TARGET_DIR}/projects/README.md"
-    echo "To add it, re-fork without the \`--without-projects\` flag, or copy from the template." >> "${TARGET_DIR}/projects/README.md"
+    {
+        echo "# Projects (not included)"
+        echo ""
+        echo "This agent was created without the projects directory."
+        echo "To add it, re-fork without the \`--without-projects\` flag, or copy from the template."
+    } > "${TARGET_DIR}/projects/README.md"
 fi
 
 # Optional: people directory
@@ -275,10 +281,12 @@ else
     echo "  Skipping: people directory"
     # Create stub so doc links resolve
     mkdir -p "${TARGET_DIR}/people"
-    echo "# People (not included)" > "${TARGET_DIR}/people/README.md"
-    echo "" >> "${TARGET_DIR}/people/README.md"
-    echo "This agent was created without the people directory." >> "${TARGET_DIR}/people/README.md"
-    echo "To add it, re-fork without the \`--without-people\` flag, or copy from the template." >> "${TARGET_DIR}/people/README.md"
+    {
+        echo "# People (not included)"
+        echo ""
+        echo "This agent was created without the people directory."
+        echo "To add it, re-fork without the \`--without-people\` flag, or copy from the template."
+    } > "${TARGET_DIR}/people/README.md"
     # Strip people sections from README
     perl -i -0pe 's/<!--people-->.*?<!--\/people-->\n?//gs' "${TARGET_DIR}/README.md"
 fi
@@ -320,7 +328,7 @@ fi
 cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
 # Set creation timestamp if gptodo is available (optional tool)
 if command -v gptodo > /dev/null 2>&1; then
-    (cd "${TARGET_DIR}" && gptodo edit initial-agent-setup --set created $(iso_datetime))
+    (cd "${TARGET_DIR}" && gptodo edit initial-agent-setup --set created "$(iso_datetime)")
 else
     echo "Note: gptodo not installed - skipping timestamp update"
     echo "Install with: uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo"
@@ -328,6 +336,7 @@ fi
 
 # If pre-commit is installed
 # Install pre-commit hooks (may fail if core.hooksPath is set)
+# shellcheck disable=SC2015  # A && B || C is intentional: ignore install failure
 command -v pre-commit > /dev/null && (cd "${TARGET_DIR}" && pre-commit install) || true
 
 # Stage files first, then run pre-commit to format them
@@ -335,6 +344,7 @@ command -v pre-commit > /dev/null && (cd "${TARGET_DIR}" && pre-commit install) 
 
 # Run pre-commit to format staged files, then restage any changes
 if command -v pre-commit > /dev/null; then
+    # shellcheck disable=SC2015  # pre-commit run failures are intentionally swallowed
     (cd "${TARGET_DIR}" && pre-commit run || true)
     (cd "${TARGET_DIR}" && git add .)
 fi
