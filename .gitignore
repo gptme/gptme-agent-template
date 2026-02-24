@@ -1,4 +1,78 @@
-test
-*cache*
-*tmp*
-.vscode
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# Testing
+.coverage
+.coverage.*
+coverage.json
+htmlcov/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE & editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets & environment
+.env
+.env.*
+!.env*.example
+secrets/
+gptme.local.toml
+
+# Logs & temporary files
+*.log
+/logs/
+/logs_*/
+/logs.backup*/
+tmp/
+
+# Cache directories
+.*cache*/
+*.cache*/
+
+# Agent runtime artifacts
+locks/
+state/locks/
+state/sessions/
+/runs/
+/queue/
+
+# Temporary prompt files
+.gptme-prompt-*.txt
+
+# Generated embeddings
+embeddings/
+
+# Large binary files (track selectively via .gitattributes if needed)
+*.json
+*.jsonl
+!state/*.json
+!.claude/settings.json
+*.png
+*.jpg
+*.pdf
+
+# Exception: assets/ are intentionally tracked
+!assets/**
+
+# Syncthing conflict files
+*.sync-conflict-*
+
+# Node/Bun (if using Claude Code backend)
+node_modules/
+.npm/
