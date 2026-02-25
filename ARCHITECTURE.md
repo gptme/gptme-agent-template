@@ -11,7 +11,7 @@ This workspace implements a forkable agent architecture, designed to be used as 
 
 ## Tools
 
-For a information about tools used in this workspace, see [`TOOLS.md`](./TOOLS.md).
+For information about tools used in this workspace, see [`TOOLS.md`](./TOOLS.md).
 
 ## Task System
 
@@ -29,7 +29,7 @@ The journal system provides a daily log of activities, thoughts, and progress.
 
 ### Structure
 
-- One file per day: `YYYY-MM-DD.md`
+- Subdirectory per day: `journal/YYYY-MM-DD/HHMMSS-topic.md`
 - Located in [`journal/`](./journal) directory
 - Entries are to be appended, not overwritten
 - Historical entries are not to be modified
