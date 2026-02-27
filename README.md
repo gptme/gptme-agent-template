@@ -98,6 +98,21 @@ claude
 The `scripts/build-system-prompt.sh` script reads `gptme.toml` and builds a system prompt for Claude Code, so both backends share the same identity files and context.
 <!--/template-->
 
+<!--template-->
+### Workspace Health Check
+
+After creating or forking an agent workspace, verify everything is configured correctly:
+
+```sh
+gptme-agent doctor
+```
+
+This checks core files, configuration, directories, tools, and submodules. Use `--fix` to auto-fix simple issues (create missing directories, initialize submodules).
+
+> Requires gptme >= v0.32
+
+<!--/template-->
+
 Run the agent interactively with gptme or Claude Code:
 
 ```sh
