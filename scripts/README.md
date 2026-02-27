@@ -6,6 +6,7 @@ This directory contains scripts for agent workspace automation and operations.
 
 ```txt
 scripts/
+├── check-readiness.sh     # Validate workspace configuration
 ├── install-deps.sh        # Check and install dependencies
 ├── context.sh              # Main context generation orchestrator
 ├── context-journal.sh      # Recent journal entries context
@@ -231,6 +232,36 @@ Configure in `.pre-commit-config.yaml` at repo root.
 - Configure context_cmd in gptme.toml
 - Test context generation manually first
 - Monitor token usage with large contexts
+
+## Workspace Readiness Check
+
+**check-readiness.sh**: Validates that an agent workspace is properly configured.
+
+**Usage**:
+```bash
+# Check workspace readiness
+./scripts/check-readiness.sh
+
+# Auto-fix simple issues (missing dirs, permissions, submodules)
+./scripts/check-readiness.sh --fix
+```
+
+**What it checks**:
+- Core identity files (ABOUT.md, gptme.toml, ARCHITECTURE.md, AGENTS.md)
+- gptme.toml configuration (agent name, prompt section, context_cmd)
+- Directory structure (tasks/, journal/, knowledge/, lessons/)
+- Git configuration (repo, remote, pre-commit hooks)
+- Required tools (gptme, git, python3, uv, gh, gptodo)
+- Python environment (pyproject.toml, .venv, uv.lock)
+- Submodule initialization
+- Context generation script
+- Task system setup
+
+**When to use**:
+- After forking a new agent from the template
+- After setting up a new agent workspace
+- To debug "why isn't my agent working" issues
+- As a quick health check during development
 
 ## Related
 
