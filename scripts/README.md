@@ -6,7 +6,6 @@ This directory contains scripts for agent workspace automation and operations.
 
 ```txt
 scripts/
-├── check-readiness.sh     # Validate workspace configuration
 ├── install-deps.sh        # Check and install dependencies
 ├── context.sh              # Main context generation orchestrator
 ├── context-journal.sh      # Recent journal entries context
@@ -235,15 +234,14 @@ Configure in `.pre-commit-config.yaml` at repo root.
 
 ## Workspace Readiness Check
 
-**check-readiness.sh**: Validates that an agent workspace is properly configured.
+Use the built-in `gptme-agent doctor` command (available in gptme ≥ v0.32) to validate workspace configuration:
 
-**Usage**:
 ```bash
 # Check workspace readiness
-./scripts/check-readiness.sh
+gptme-agent doctor
 
-# Auto-fix simple issues (missing dirs, permissions, submodules)
-./scripts/check-readiness.sh --fix
+# Auto-fix simple issues (missing dirs, hooks, submodules)
+gptme-agent doctor --fix
 ```
 
 **What it checks**:
