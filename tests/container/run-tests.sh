@@ -27,9 +27,15 @@ log_fail() {
     TESTS_FAILED=$((TESTS_FAILED + 1))
 }
 
-# Configure git (required for fork.sh)
-git config --global user.email "test@example.com"
-git config --global user.name "Test User"
+# Configure git identity for fork.sh commits using env vars
+# Using env vars (not git config --global) avoids clobbering any existing git identity,
+# and works reliably inside containers, LXC environments, and local developer machines.
+export GIT_AUTHOR_NAME="Test User"
+export GIT_AUTHOR_EMAIL="test@example.com"
+export GIT_COMMITTER_NAME="Test User"
+export GIT_COMMITTER_EMAIL="test@example.com"
+
+# Set default branch name for git init (safe: not personal identity, only affects new repos)
 git config --global init.defaultBranch master
 
 cd /home/testuser/gptme-agent-template
