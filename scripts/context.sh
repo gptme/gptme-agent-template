@@ -40,6 +40,6 @@ echo
 "$SCRIPT_DIR"/context-workspace.sh
 echo
 echo -e "# Git\n"
-echo '```git status -vv'
-git status -vv
+echo '```git status'
+git status | head -200
 echo '```'
