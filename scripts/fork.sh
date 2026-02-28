@@ -304,6 +304,17 @@ copy_file tasks/templates/initial-agent-setup.md
 # Clone and initialize the gptme-contrib submodule
 (cd "${TARGET_DIR}" && git submodule add https://github.com/gptme/gptme-contrib.git gptme-contrib)
 (cd "${TARGET_DIR}" && git submodule update --init --recursive)
+# If the template pins gptme-contrib to a specific commit (e.g. ahead of master),
+# fetch and checkout that exact commit in the forked workspace
+CONTRIB_COMMIT=$(cd "${SOURCE_DIR}" && git ls-files -s gptme-contrib | awk '{print $2}')
+if [ -n "${CONTRIB_COMMIT}" ]; then
+    CURRENT_COMMIT=$(cd "${TARGET_DIR}/gptme-contrib" && git rev-parse HEAD)
+    if [ "${CURRENT_COMMIT}" != "${CONTRIB_COMMIT}" ]; then
+        # Fetch the specific branch that contains the pinned commit, then checkout
+        (cd "${TARGET_DIR}/gptme-contrib" && git fetch --all && git checkout "${CONTRIB_COMMIT}" 2>/dev/null) || true
+        (cd "${TARGET_DIR}" && git add gptme-contrib)
+    fi
+fi
 
 # Setup dotfiles if requested
 if [ "$WITH_DOTFILES" = true ]; then
