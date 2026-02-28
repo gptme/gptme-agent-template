@@ -301,12 +301,20 @@ copy_file tasks/templates/initial-agent-setup.md
 # Initialize git
 (cd "${TARGET_DIR}" && git init)
 
-# Clone gptme-contrib from the local source (preserves exact commit, no network needed)
-# Then update the remote URL to the canonical remote for future updates
-(cd "${TARGET_DIR}" && git submodule add "${SOURCE_DIR}/gptme-contrib" gptme-contrib)
+# Clone and initialize the gptme-contrib submodule
+(cd "${TARGET_DIR}" && git submodule add https://github.com/gptme/gptme-contrib.git gptme-contrib)
 (cd "${TARGET_DIR}" && git submodule update --init --recursive)
-(cd "${TARGET_DIR}" && git config --file=.gitmodules submodule.gptme-contrib.url https://github.com/gptme/gptme-contrib.git)
-(cd "${TARGET_DIR}" && git submodule sync)
+# If the template pins gptme-contrib to a specific commit (e.g. ahead of master),
+# fetch and checkout that exact commit in the forked workspace
+CONTRIB_COMMIT=$(cd "${SOURCE_DIR}" && git ls-files -s gptme-contrib | awk '{print $2}')
+if [ -n "${CONTRIB_COMMIT}" ]; then
+    CURRENT_COMMIT=$(cd "${TARGET_DIR}/gptme-contrib" && git rev-parse HEAD)
+    if [ "${CURRENT_COMMIT}" != "${CONTRIB_COMMIT}" ]; then
+        # Fetch the specific branch that contains the pinned commit, then checkout
+        (cd "${TARGET_DIR}/gptme-contrib" && git fetch --all && git checkout "${CONTRIB_COMMIT}" 2>/dev/null) || true
+        (cd "${TARGET_DIR}" && git add gptme-contrib)
+    fi
+fi
 
 # Setup dotfiles if requested
 if [ "$WITH_DOTFILES" = true ]; then
