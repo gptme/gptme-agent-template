@@ -301,9 +301,12 @@ copy_file tasks/templates/initial-agent-setup.md
 # Initialize git
 (cd "${TARGET_DIR}" && git init)
 
-# Clone and initialize the gptme-contrib submodule
-(cd "${TARGET_DIR}" && git submodule add https://github.com/gptme/gptme-contrib.git gptme-contrib)
+# Clone gptme-contrib from the local source (preserves exact commit, no network needed)
+# Then update the remote URL to the canonical remote for future updates
+(cd "${TARGET_DIR}" && git submodule add "${SOURCE_DIR}/gptme-contrib" gptme-contrib)
 (cd "${TARGET_DIR}" && git submodule update --init --recursive)
+(cd "${TARGET_DIR}" && git config --file=.gitmodules submodule.gptme-contrib.url https://github.com/gptme/gptme-contrib.git)
+(cd "${TARGET_DIR}" && git submodule sync)
 
 # Setup dotfiles if requested
 if [ "$WITH_DOTFILES" = true ]; then
