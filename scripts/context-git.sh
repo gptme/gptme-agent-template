@@ -1,0 +1,1 @@
+../gptme-contrib/scripts/context/context-git.sh
