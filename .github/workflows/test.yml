@@ -49,3 +49,16 @@ jobs:
         # Test basic usage (script will do its own validation)
         ./scripts/fork.sh test-agent
         ./scripts/fork.sh test-agent-named TestAgent
+
+    - name: Verify forked agent has no unexpected non-symlink scripts
+      run: |
+        # Enforce the invariant: all scripts in a forked agent must be symlinks
+        # (to gptme-contrib, for auto-updating) or in the known agent-specific allowlist.
+        # Catches scripts added to the template that accidentally end up in forked agents
+        # without a contrib counterpart.
+        python3 scripts/check-symlinks.py test-agent --mode=forked
+
+    - name: Check template itself has no contrib copies (should be symlinks)
+      run: |
+        # The template itself should use symlinks for shared contrib scripts.
+        python3 scripts/check-symlinks.py . --contrib-dir gptme-contrib

@@ -189,6 +189,22 @@ if $scripts_with_exec; then
     log_pass "Scripts have execute permissions"
 fi
 
+# Test 11: No verbatim copies of gptme-contrib scripts (should be symlinks)
+log_test "No drift: shared scripts are symlinks, not copies"
+TEMPLATE_DIR=/home/testuser/gptme-agent-template
+if [[ -f "$TEMPLATE_DIR/scripts/check-symlinks.py" ]] && [[ -d gptme-contrib ]] && [[ -n "$(ls -A gptme-contrib 2>/dev/null)" ]]; then
+    DRIFT_OUTPUT=$(python3 "$TEMPLATE_DIR/scripts/check-symlinks.py" . 2>&1)
+    DRIFT_EXIT=$?
+    if [[ $DRIFT_EXIT -eq 0 ]]; then
+        log_pass "No drift: all shared scripts are properly symlinked"
+    else
+        log_fail "Drift detected — found verbatim copies that should be symlinks:"
+        echo "$DRIFT_OUTPUT"
+    fi
+else
+    log_pass "Skipping drift check (check-symlinks.py or gptme-contrib not available)"
+fi
+
 echo ""
 echo "========================================"
 echo "Test Summary"
