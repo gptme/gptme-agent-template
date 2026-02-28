@@ -41,5 +41,5 @@ echo
 echo
 echo -e "# Git\n"
 echo '```git status'
-git status
+git status | head -200
 echo '```'
