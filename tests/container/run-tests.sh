@@ -28,9 +28,30 @@ log_fail() {
 }
 
 # Configure git (required for fork.sh)
-git config --global user.email "test@example.com"
-git config --global user.name "Test User"
-git config --global init.defaultBranch master
+# IMPORTANT: These git config commands set global config.
+# This is safe inside a container (isolated env) but dangerous on a host machine
+# (it will overwrite the user's real git identity).
+# Detect if running in a container to avoid clobbering host git config.
+_in_container=false
+if [ -f /.dockerenv ] || grep -qE 'docker|container|lxc' /proc/1/cgroup 2>/dev/null; then
+    _in_container=true
+fi
+
+if [ "$_in_container" = "true" ]; then
+    git config --global user.email "test@example.com"
+    git config --global user.name "Test User"
+    git config --global init.defaultBranch master
+else
+    echo "WARNING: Not running inside a container!"
+    echo "Skipping global git config override to protect host git identity."
+    echo "If git identity is not set, fork.sh commits may fail."
+    echo "Run this script via: docker run ... (see README for instructions)"
+    # Set local config in a temp HOME so fork.sh commits work without touching global config
+    export GIT_AUTHOR_NAME="Test User"
+    export GIT_AUTHOR_EMAIL="test@example.com"
+    export GIT_COMMITTER_NAME="Test User"
+    export GIT_COMMITTER_EMAIL="test@example.com"
+fi
 
 cd /home/testuser/gptme-agent-template
 
