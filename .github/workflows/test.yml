@@ -49,3 +49,15 @@ jobs:
         # Test basic usage (script will do its own validation)
         ./scripts/fork.sh test-agent
         ./scripts/fork.sh test-agent-named TestAgent
+
+    - name: Check for symlink drift in forked agent
+      run: |
+        # Verify the forked agent has no verbatim copies of gptme-contrib scripts
+        # (they should be symlinks so they receive upstream updates automatically)
+        python3 scripts/check-symlinks.py test-agent \
+          --contrib-dir test-agent/gptme-contrib
+
+    - name: Check template itself has no symlink drift
+      run: |
+        # The template repo itself should also be clean
+        python3 scripts/check-symlinks.py . --contrib-dir gptme-contrib
