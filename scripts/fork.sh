@@ -218,6 +218,13 @@ copy_file .gitmodules
 # Copy scripts directory, then optionally remove autonomous runs
 copy_file scripts
 
+# Remove template-specific scripts that belong in the template but not in instantiated agents:
+#   check-symlinks.py — template maintenance tool (checks for drift in the template itself)
+#   fork.sh / fork.py — template instantiation tools (agents don't fork other agents, YAGNI)
+rm -f "${TARGET_DIR}/scripts/check-symlinks.py"
+rm -f "${TARGET_DIR}/scripts/fork.sh"
+rm -f "${TARGET_DIR}/scripts/fork.py"
+
 if [ "$WITH_AUTONOMOUS" = false ]; then
     echo "  Skipping: autonomous run scripts"
     rm -rf "${TARGET_DIR}/scripts/runs"
