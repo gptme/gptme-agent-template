@@ -5,12 +5,14 @@ Detect non-symlinked scripts/files in agent workspaces that should be symlinks t
 Usage:
     scripts/check-symlinks.py [<agent-dir>] [--contrib-dir <path>] [--verbose]
 
-When a file in the agent workspace is a verbatim copy of a file in gptme-contrib,
-it should instead be a symlink — copies drift and won't receive upstream updates.
+Two checks:
+  1. Hash match:  Agent file is a verbatim copy of a contrib file (should be a symlink).
+  2. Name match:  Agent file has the same name as a contrib file but different content
+                  (likely drifted — should be consolidated in contrib and symlinked).
 
 Exit codes:
-    0 - Clean: all shared files are properly symlinked
-    1 - Drift detected: found verbatim copies that should be symlinks
+    0 - Clean: no issues found
+    1 - Issues detected: found copies or name collisions
 """
 
 import argparse
@@ -29,25 +31,50 @@ def hash_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def build_contrib_index(contrib_dir: Path) -> dict[str, Path]:
-    """Build a hash → path mapping for all files in gptme-contrib."""
-    index: dict[str, Path] = {}
+def is_script_file(path: Path) -> bool:
+    """Check if a file is a script (.sh, .py, or executable)."""
+    return (
+        path.name.endswith(".sh")
+        or path.name.endswith(".py")
+        or os.access(path, os.X_OK)
+    )
+
+
+SKIP_DIRS = {".git", "__pycache__", ".venv", ".mypy_cache", "node_modules"}
+
+
+def build_contrib_index(
+    contrib_dir: Path, verbose: bool = False
+) -> tuple[dict[str, Path], dict[str, list[Path]]]:
+    """
+    Build two indexes of gptme-contrib:
+      1. hash_index:  SHA-256 hash → contrib path  (for exact-copy detection)
+      2. name_index:  filename → [contrib paths]    (for name-collision detection)
+    """
+    hash_index: dict[str, Path] = {}
+    name_index: dict[str, list[Path]] = {}
+
     for root, dirs, files in os.walk(contrib_dir):
-        # Skip .git internals
-        dirs[:] = [
-            d for d in dirs if d not in {".git", "__pycache__", ".venv", ".mypy_cache"}
-        ]
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
         root_path = Path(root)
         for fname in files:
             fpath = root_path / fname
             if fpath.is_symlink():
-                continue  # Skip symlinks within contrib
+                continue
+            if not is_script_file(fpath):
+                continue
             try:
                 h = hash_file(fpath)
-                index[h] = fpath
+                hash_index[h] = fpath
+                name_index.setdefault(fname, []).append(fpath)
             except (OSError, PermissionError):
                 pass
-    return index
+
+    if verbose:
+        print(
+            f"  Indexed {len(hash_index)} script files, {len(name_index)} unique names"
+        )
+    return hash_index, name_index
 
 
 def check_agent_dir(
@@ -55,24 +82,25 @@ def check_agent_dir(
     contrib_dir: Path,
     check_dirs: list[str],
     verbose: bool = False,
-) -> list[tuple[Path, Path]]:
+) -> tuple[list[tuple[Path, Path]], list[tuple[Path, list[Path]]]]:
     """
-    Find regular files in agent_dir that are verbatim copies of gptme-contrib files.
+    Find script files in agent_dir that overlap with gptme-contrib.
 
-    Returns list of (agent_path, contrib_path) pairs indicating drift.
+    Returns:
+      - exact_copies: (agent_path, contrib_path) — verbatim copies
+      - name_collisions: (agent_path, [contrib_paths]) — same name, different content
     """
     if not contrib_dir.exists():
         print(f"WARNING: gptme-contrib not found at {contrib_dir}", file=sys.stderr)
         print("  Run: git submodule update --init gptme-contrib", file=sys.stderr)
-        return []
+        return [], []
 
     if verbose:
         print(f"Building index of {contrib_dir}...")
-    contrib_index = build_contrib_index(contrib_dir)
-    if verbose:
-        print(f"  Indexed {len(contrib_index)} contrib files")
+    hash_index, name_index = build_contrib_index(contrib_dir, verbose)
 
-    drift: list[tuple[Path, Path]] = []
+    exact_copies: list[tuple[Path, Path]] = []
+    name_collisions: list[tuple[Path, list[Path]]] = []
 
     for check_dir_name in check_dirs:
         check_path = agent_dir / check_dir_name
@@ -82,17 +110,15 @@ def check_agent_dir(
         for root, dirs, files in os.walk(check_path):
             root_path = Path(root)
 
-            # If the directory itself is a symlink to contrib, it's correct — skip entirely
+            # Symlinked directories are correct — skip
             if root_path.is_symlink():
-                dirs.clear()  # Don't descend into symlinked dirs
+                dirs.clear()
                 if verbose:
                     rel = root_path.relative_to(agent_dir)
                     print(f"  OK (dir symlink): {rel}/")
                 continue
 
-            dirs[:] = [
-                d for d in dirs if d not in {"__pycache__", ".venv", ".mypy_cache"}
-            ]
+            dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
 
             for fname in files:
                 fpath = root_path / fname
@@ -105,34 +131,37 @@ def check_agent_dir(
                         print(f"  OK (symlink): {rel} -> {target}")
                     continue
 
-                # Skip non-executable text files in a few noisy dirs
-                rel_path = fpath.relative_to(agent_dir)
-                rel_str = str(rel_path)
-
-                # Only flag script-like files: .sh, .py, or files with execute bit
-                is_script = (
-                    fname.endswith(".sh")
-                    or fname.endswith(".py")
-                    or os.access(fpath, os.X_OK)
-                )
-                if not is_script:
+                if not is_script_file(fpath):
                     continue
+
+                rel_str = str(fpath.relative_to(agent_dir))
 
                 try:
                     h = hash_file(fpath)
                 except (OSError, PermissionError):
                     continue
 
-                if h in contrib_index:
-                    contrib_path = contrib_index[h]
-                    drift.append((fpath, contrib_path))
+                # Check 1: exact hash match (verbatim copy)
+                if h in hash_index:
+                    contrib_path = hash_index[h]
+                    exact_copies.append((fpath, contrib_path))
+                    if verbose:
+                        print(f"  COPY: {rel_str}")
+                        print(
+                            f"        (same as {contrib_path.relative_to(contrib_dir)})"
+                        )
+                # Check 2: same filename, different content (drifted)
+                elif fname in name_index:
+                    contrib_paths = name_index[fname]
+                    name_collisions.append((fpath, contrib_paths))
                     if verbose:
                         print(f"  DRIFT: {rel_str}")
-                        print(
-                            f"         (same as {contrib_path.relative_to(contrib_dir)})"
-                        )
+                        for cp in contrib_paths:
+                            print(
+                                f"         (same name as {cp.relative_to(contrib_dir)})"
+                            )
 
-    return drift
+    return exact_copies, name_collisions
 
 
 def main() -> int:
@@ -162,7 +191,7 @@ def main() -> int:
         "--verbose",
         "-v",
         action="store_true",
-        help="Show all files checked, not just drift",
+        help="Show all files checked, not just issues",
     )
     args = parser.parse_args()
 
@@ -182,28 +211,52 @@ def main() -> int:
     print(f"Scanning:       {', '.join(args.check_dirs)}")
     print()
 
-    drift = check_agent_dir(
+    exact_copies, name_collisions = check_agent_dir(
         agent_dir, contrib_dir, args.check_dirs, verbose=args.verbose
     )
 
-    if not drift:
-        print("✓ No drift detected — all shared scripts are properly symlinked.")
+    issues = False
+
+    if exact_copies:
+        issues = True
+        print(
+            f"✗ Found {len(exact_copies)} verbatim copy(s) that should be symlinks:\n"
+        )
+        for agent_path, contrib_path in sorted(exact_copies):
+            rel_agent = agent_path.relative_to(agent_dir)
+            rel_contrib = contrib_path.relative_to(contrib_dir)
+            print(f"  {rel_agent}")
+            print(f"    → same content as: gptme-contrib/{rel_contrib}")
+            target = os.path.relpath(contrib_path, agent_path.parent)
+            print(f"    → fix: ln -sf {target} {agent_path.name}")
+            print()
+
+    if name_collisions:
+        issues = True
+        print(
+            f"⚠ Found {len(name_collisions)} script(s) sharing names with contrib "
+            f"(possible drift):\n"
+        )
+        for agent_path, contrib_paths in sorted(name_collisions):
+            rel_agent = agent_path.relative_to(agent_dir)
+            print(f"  {rel_agent}")
+            for cp in contrib_paths:
+                rel_contrib = cp.relative_to(contrib_dir)
+                print(f"    → same name as: gptme-contrib/{rel_contrib}")
+            print(
+                "    → Action: consolidate into contrib and replace with symlink, "
+                "or verify this is intentionally agent-specific."
+            )
+            print()
+
+    if not issues:
+        print("✓ No issues — all shared scripts are properly symlinked.")
         return 0
 
-    print(f"✗ Found {len(drift)} file(s) that should be symlinks to gptme-contrib:\n")
-    for agent_path, contrib_path in sorted(drift):
-        rel_agent = agent_path.relative_to(agent_dir)
-        rel_contrib = contrib_path.relative_to(contrib_dir)
-        print(f"  {rel_agent}")
-        print(f"    → should symlink to: gptme-contrib/{rel_contrib}")
-        # Suggest the fix
-        target = os.path.relpath(contrib_path, agent_path.parent)
-        print(f"    → fix: ln -sf {target} {agent_path.name}")
-        print()
-
-    print("These files are verbatim copies of gptme-contrib files.")
-    print("They should be symlinks so they receive upstream updates automatically.")
-    return 1
+    # Exact copies are errors (exit 1), name collisions are warnings (exit 0)
+    if exact_copies:
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
