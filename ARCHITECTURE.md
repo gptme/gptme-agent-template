@@ -81,24 +81,47 @@ The people directory stores long-term information about individuals the agent in
 
 ## Content Layers
 
-Agent workspaces can include shared content via git submodules. Each layer has a different scope and audience — knowing where information belongs prevents duplication and staleness.
+Agent workspaces include shared content via git submodules. Each layer has a different scope — knowing where information belongs prevents duplication and staleness.
 
-| Layer | Repo | Scope | Content | Audience |
-|-------|------|-------|---------|----------|
-| **Public shared** | gptme-contrib | All gptme users | Packages, plugins, lessons, scripts | Open source community |
-| **Agent template** | gptme-agent-template | New agents | Workspace structure, templates, default configs | Agents at creation time |
-| **Org shared** | (e.g. gptme-superuser) | All org agents | Strategy, people, operations, processes | Internal team |
-| **Agent workspace** | (this repo) | Single agent | Identity, journals, tasks, knowledge | The agent itself |
+| Layer | Repo | Scope | Content |
+|-------|------|-------|---------|
+| **Agent template** | gptme-agent-template | All agents | Workspace structure, scripts, configs, templates |
+| **Public shared** | gptme-contrib | All gptme users | Packages, plugins, lessons, pre-commit hooks |
+| **Org shared** | (e.g. gptme-superuser) | Org agents | Strategy, people, operations, processes |
+| **Agent workspace** | (this repo) | Single agent | Identity, journals, tasks, knowledge |
+
+### Template and contrib relationship
+
+Most files in the agent template should be **symlinks into gptme-contrib** — this way agents get updates by simply updating the contrib submodule. Examples: pre-commit hooks, lesson files, shared scripts, validators.
+
+Some files **cannot be symlinks** because they are agent-specific or need local customization: `ABOUT.md`, `gptme.toml`, `README.md`, task/journal content.
+
+The rule of thumb: if the content is generic and useful across agents, it should live in contrib with the template symlinking to it. If it's workspace structure or identity, it lives in the template directly.
+
+### Staying current with the template
+
+Agents forked from this template will drift over time as the template evolves. To check what's changed:
+
+```sh
+# Add template as a remote (one-time)
+git remote add template https://github.com/gptme/gptme-agent-template.git
+
+# Fetch and diff against current template
+git fetch template master
+git diff HEAD...template/master -- ARCHITECTURE.md scripts/ .pre-commit-config.yaml
+```
+
+For contrib, agents using symlinks get updates automatically when the submodule is bumped. Check for broken or missing symlinks with: `find . -xtype l` (finds broken symlinks).
 
 ### Where does new content go?
 
+- **Should new agents start with it?** → agent template (symlink to contrib if generic)
 - **Is it useful to all gptme users?** → contrib (package, lesson, or script)
-- **Should new agents start with it?** → agent template
 - **Is it org-level context shared across agents?** → org repo (as submodule)
 - **Is it specific to this agent?** → agent workspace
 
 ### When to upstream
 
-- If you build a script that other agents could use → propose for contrib or org repo
-- If you establish a pattern that should be the default for new agents → propose for the template
+- If you build a script/lesson that other agents could use → propose for contrib
+- If you establish a structural pattern that should be the default → propose for the template
 - Org-level docs should contain long-term content only; volatile details stay in agent workspaces
