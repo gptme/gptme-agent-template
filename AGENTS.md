@@ -11,24 +11,41 @@ These define who you are, how you work, and what you know. Key files:
 - **ARCHITECTURE.md** — System design, workspace structure
 - **TASKS.md** — Task management system
 
+**Important**: Get the repo root dynamically — never hardcode paths:
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel)
+```
+
 ## Core Rules
 
 ### File Operations — Use Absolute Paths
 
 ```bash
-# Correct — use repo root
-/path/to/workspace/journal/2025-10-14/topic.md
+# Correct — derive repo root, then use absolute path
+REPO_ROOT=$(git rev-parse --show-toplevel)
+echo "entry" >> "$REPO_ROOT/journal/2025-10-14/topic.md"
 
 # Wrong — breaks when cwd changes
-journal/2025-10-14/topic.md
+echo "entry" >> journal/2025-10-14/topic.md
 ```
 
 ### Git Workflow
 
+- **Default branch is `master`** — not `main`. Never assume `main`.
 - **Commit messages**: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`)
 - **Workspace repo**: Commit directly to master for docs/journal/tasks
-- **External repos**: Use branches + PRs, never commit to master directly
+- **External repos**: Use branches + PRs from worktrees at `/tmp/worktrees/<repo>/<branch>/`
 - **Stage explicitly**: Use `git add <files>`, never `git add .` or `git commit -a`
+- **PR merge strategy**: Always `--squash` when merging
+- **No AI attribution**: Never add `Co-Authored-By: Claude` or "Generated with Claude Code" to commits/PRs
+
+### Safety Rules
+
+- **Never force-push to master/main**
+- **Never skip hooks** with `--no-verify` unless explicitly asked
+- **Never commit secrets** — check with `git diff --staged` before committing
+- **Verify CI passes** after pushing: `gh pr checks <num> --watch`
 
 ### Journal
 
@@ -45,14 +62,18 @@ journal/2025-10-14/topic.md
 
 ### Pre-Commit Hooks
 
-Run automatically on commit. Don't bypass with `--no-verify` unless necessary.
+Run automatically on commit. Don't bypass with `--no-verify` unless explicitly asked.
 
 ```bash
 # Fix formatting
 make format
 
-# Run all hooks manually
-pre-commit run --all-files
+# Run all hooks manually (prek is faster if available, falls back to pre-commit)
+if command -v prek &>/dev/null; then
+    prek run --all-files
+else
+    pre-commit run --all-files
+fi
 ```
 
 ### Testing
@@ -69,7 +90,23 @@ make typecheck   # Type checking
 - `context_cmd` runs `scripts/context.sh` for dynamic context
 - Lessons matched by keywords automatically
 
-### Claude Code
-- Only this file is auto-loaded — read bootstrap files listed above manually
-- For autonomous runs, `scripts/build-system-prompt.sh` builds the full context
-- Run `scripts/context.sh` to get dynamic context (tasks, GitHub, git status)
+### Claude Code / Codex
+- Only this file is auto-loaded — **manually read bootstrap files** listed above
+- Run `scripts/context.sh` at session start for dynamic context (tasks, GitHub, git status)
+- No automatic lesson injection — check `lessons/` when relevant
+
+### Working on External Repos
+
+For any code change outside the workspace repo, use worktrees:
+
+```bash
+# New feature/fix in an external repo
+cd /path/to/external-repo
+BRANCH="fix-my-issue"
+git worktree add "/tmp/worktrees/$(basename $PWD)/$BRANCH" -b "$BRANCH" origin/master
+cd "/tmp/worktrees/$(basename $PWD)/$BRANCH"
+git branch --unset-upstream   # prevent accidental push to master
+# ... make changes, commit ...
+git push -u origin "$BRANCH"
+gh pr create
+```
