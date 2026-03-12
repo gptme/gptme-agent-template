@@ -62,14 +62,18 @@ echo "entry" >> journal/2025-10-14/topic.md
 
 ### Pre-Commit Hooks
 
-Run automatically on commit. Don't bypass with `--no-verify` unless necessary.
+Run automatically on commit. Don't bypass with `--no-verify` unless explicitly asked.
 
 ```bash
 # Fix formatting
 make format
 
 # Run all hooks manually (prek is faster if available, falls back to pre-commit)
-prek run --all-files 2>/dev/null || pre-commit run --all-files
+if command -v prek &>/dev/null; then
+    prek run --all-files
+else
+    pre-commit run --all-files
+fi
 ```
 
 ### Testing
