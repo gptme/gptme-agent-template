@@ -3,21 +3,24 @@
 # to fix `git grep` for users with PAGER set
 PAGER=cat
 
+# Use prek (faster Rust-based runner) if available, fall back to pre-commit
+PRE_COMMIT := $(shell command -v prek 2>/dev/null || echo pre-commit)
+
 install: install-precommit  ## Install all hooks and dependencies
 
 install-precommit:  ## Install pre-commit hooks for repo
-	pre-commit install
+	$(PRE_COMMIT) install
 
 install-dotfiles:  ## Install dotfiles for user, with global git hooks
 	./dotfiles/install.sh
 
 format:  ## Fix formatting (ruff)
-	pre-commit run ruff-format --all-files || true
-	pre-commit run end-of-file-fixer --all-files || true
-	pre-commit run trailing-whitespace --all-files || true
+	$(PRE_COMMIT) run ruff-format --all-files || true
+	$(PRE_COMMIT) run end-of-file-fixer --all-files || true
+	$(PRE_COMMIT) run trailing-whitespace --all-files || true
 
 check:  ## Run all pre-commit hooks
-	pre-commit run --all-files
+	$(PRE_COMMIT) run --all-files
 
 test:  ## Run tests (if any exist)
 	@if [ -d tests ] && find tests -name '*.py' -not -name '__*' | grep -q .; then \
@@ -27,7 +30,7 @@ test:  ## Run tests (if any exist)
 	fi
 
 typecheck:  ## Run type checking (mypy)
-	pre-commit run mypy --all-files
+	$(PRE_COMMIT) run mypy --all-files
 
 context:  ## Generate context summary
 	./scripts/context.sh

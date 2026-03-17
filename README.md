@@ -54,7 +54,7 @@ Before forking or using this template, ensure you have the required dependencies
 | `tree` | Directory visualization | `apt/brew/dnf install tree` |
 | `jq` | JSON processing | `apt/brew/dnf install jq` |
 | `gh` | GitHub CLI | [cli.github.com](https://cli.github.com/) |
-| `pre-commit` | Git hooks | `pipx install pre-commit` |
+| `prek` | Git hooks (fast Rust runner) | `uv tool install prek` |
 | `shellcheck` | Shell script linter | `apt/brew/dnf install shellcheck` |
 <!--/template-->
 

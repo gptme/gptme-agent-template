@@ -136,10 +136,12 @@ case $OS in
         ;;
 esac
 
-if ! check_cmd "pre-commit" "pre-commit" "pipx install pre-commit"; then
+# prek is a faster Rust-based drop-in for pre-commit (preferred)
+# Falls back gracefully to pre-commit if prek isn't available
+if ! check_cmd "prek" "prek" "uv tool install prek"; then
     if $INSTALL_MODE; then
-        echo -e "${YELLOW}Installing pre-commit...${NC}"
-        pipx install pre-commit
+        echo -e "${YELLOW}Installing prek (fast pre-commit runner)...${NC}"
+        uv tool install prek
     fi
 fi
 
