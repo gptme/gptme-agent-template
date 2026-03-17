@@ -147,7 +147,7 @@ elif command -v pre-commit &> /dev/null; then
 else
     echo -e "${RED}✗${NC} prek/pre-commit: not found"
     echo -e "  ${YELLOW}→ uv tool install prek${NC}"
-    MISSING+=("prek")
+    MISSING+=("prek/pre-commit")
     if $INSTALL_MODE; then
         echo -e "${YELLOW}Installing prek (fast pre-commit runner)...${NC}"
         uv tool install prek
