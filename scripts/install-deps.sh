@@ -136,10 +136,21 @@ case $OS in
         ;;
 esac
 
-if ! check_cmd "pre-commit" "pre-commit" "pipx install pre-commit"; then
+# prek is a faster Rust-based drop-in for pre-commit (preferred)
+# Either prek or pre-commit satisfies this requirement; only flag MISSING if neither is available
+if command -v prek &> /dev/null; then
+    version=$(prek --version 2>/dev/null | head -1 || echo "installed")
+    echo -e "${GREEN}✓${NC} prek: $version"
+elif command -v pre-commit &> /dev/null; then
+    version=$(pre-commit --version 2>/dev/null | head -1 || echo "installed")
+    echo -e "${GREEN}✓${NC} pre-commit: $version (prek preferred: uv tool install prek)"
+else
+    echo -e "${RED}✗${NC} prek/pre-commit: not found"
+    echo -e "  ${YELLOW}→ uv tool install prek${NC}"
+    MISSING+=("prek/pre-commit")
     if $INSTALL_MODE; then
-        echo -e "${YELLOW}Installing pre-commit...${NC}"
-        pipx install pre-commit
+        echo -e "${YELLOW}Installing prek (fast pre-commit runner)...${NC}"
+        uv tool install prek
     fi
 fi
 
