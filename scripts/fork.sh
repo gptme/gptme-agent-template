@@ -352,18 +352,21 @@ else
     echo "Install with: uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo"
 fi
 
-# If pre-commit is installed
-# Install pre-commit hooks (may fail if core.hooksPath is set)
-# shellcheck disable=SC2015  # A && B || C is intentional: ignore install failure
-command -v pre-commit > /dev/null && (cd "${TARGET_DIR}" && pre-commit install) || true
+# Prefer prek (faster Rust-based runner), fall back to pre-commit
+PRE_COMMIT_BIN=$(command -v prek 2>/dev/null || command -v pre-commit 2>/dev/null || true)
 
-# Stage files first, then run pre-commit to format them
+# Install pre-commit hooks if a hook runner is available
+# (may fail if core.hooksPath is set — that's fine, hooks still run via global config)
+# shellcheck disable=SC2015  # A && B || C is intentional: ignore install failure
+[ -n "$PRE_COMMIT_BIN" ] && (cd "${TARGET_DIR}" && "$PRE_COMMIT_BIN" install) || true
+
+# Stage files first, then run hook runner to format them
 (cd "${TARGET_DIR}" && git add .)
 
-# Run pre-commit to format staged files, then restage any changes
-if command -v pre-commit > /dev/null; then
-    # shellcheck disable=SC2015  # pre-commit run failures are intentionally swallowed
-    (cd "${TARGET_DIR}" && pre-commit run || true)
+# Run hook runner to format staged files, then restage any changes
+if [ -n "$PRE_COMMIT_BIN" ]; then
+    # shellcheck disable=SC2015  # hook runner failures are intentionally swallowed
+    (cd "${TARGET_DIR}" && "$PRE_COMMIT_BIN" run || true)
     (cd "${TARGET_DIR}" && git add .)
 fi
 
