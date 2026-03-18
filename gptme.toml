@@ -15,8 +15,11 @@ files = [
 context_cmd = "scripts/context.sh"
 
 [lessons]
-# Layered lessons: gptme-contrib (shared/generic) + workspace (agent-specific)
-# The default ./lessons directory is automatically searched, so agent-specific lessons
-# are found first. Adding gptme-contrib/lessons provides shared lessons as fallback.
-# External skills (Anthropic SKILL.md format) are also crawled from these dirs.
-dirs = ["lessons", "gptme-contrib/lessons"]
+# Layered lessons + skills:
+# - lessons/: agent-specific behavioral lessons (agent-specific first)
+# - skills/: agent-specific executable skills (SKILL.md format)
+# - gptme-contrib/lessons/: shared lessons as fallback
+# - gptme-contrib/skills/: shared skills (template-skill, code-review-helper, etc.)
+# External skills (Anthropic SKILL.md format) are crawled from all dirs.
+# First dir wins on filename collision, so agent-specific files take precedence.
+dirs = ["lessons", "skills", "gptme-contrib/lessons", "gptme-contrib/skills"]
