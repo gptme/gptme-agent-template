@@ -95,6 +95,32 @@ make typecheck   # Type checking
 - Run `scripts/context.sh` at session start for dynamic context (tasks, GitHub, git status)
 - No automatic lesson injection — check `lessons/` when relevant
 
+### Nested Claude Code Subprocesses
+
+Claude Code sets `CLAUDECODE` env var, which blocks nested `claude -p` invocations
+(protection against recursion). If your agent needs to spawn a Claude subprocess
+(e.g. from a script or systemd service), unset it first:
+
+```python
+import os, subprocess
+env = os.environ.copy()
+env.pop("CLAUDECODE", None)
+env.pop("CLAUDE_CODE_ENTRYPOINT", None)
+subprocess.run(["claude", "-p", prompt], env=env)
+```
+
+```bash
+# Shell equivalent
+env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT claude -p "prompt"
+```
+
+Also: when running `claude -p` inside tmux, always add `</dev/null` to prevent
+the process from receiving SIGSTOP (`T` state) when it tries to read stdin:
+
+```bash
+claude -p "prompt" </dev/null
+```
+
 ### Working on External Repos
 
 For any code change outside the workspace repo, use worktrees:
@@ -109,4 +135,19 @@ git branch --unset-upstream   # prevent accidental push to master
 # ... make changes, commit ...
 git push -u origin "$BRANCH"
 gh pr create
+```
+
+### Cross-Repo GitHub References
+
+When writing GitHub issue/PR comments that reference issues in a **different** repo,
+always use the full `org/repo#N` format — GitHub auto-links bare `#N` to the
+*current* repo, making cross-repo references silently wrong:
+
+```markdown
+<!-- Wrong: links to current repo's issue #42 -->
+See #42 for context.
+
+<!-- Correct: links to the intended repo -->
+See gptme/gptme#42 for context.
+See https://github.com/gptme/gptme/issues/42 for context.
 ```
