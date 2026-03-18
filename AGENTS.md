@@ -137,6 +137,8 @@ git push -u origin "$BRANCH"
 gh pr create
 ```
 
+### Cross-Repo GitHub References
+
 When writing GitHub issue/PR comments that reference issues in a **different** repo,
 always use the full `org/repo#N` format — GitHub auto-links bare `#N` to the
 *current* repo, making cross-repo references silently wrong:
