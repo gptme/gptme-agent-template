@@ -1,48 +1,49 @@
-# Skills Directory
+# Skills
 
-This directory contains **agent-specific skills** — enhanced lessons that bundle workflows, scripts, and utilities.
+Use skills to extend your capabilities with executable workflows, bundled scripts, and reusable utilities. Reach for a skill when you need a multi-step workflow with helper scripts — use a lesson when you need concise behavioral guidance that activates automatically via keywords.
 
-Skills differ from lessons:
-- Lessons: concise behavioral guidance (30-50 lines), auto-activated by keywords
-- Skills: executable workflows with bundled scripts, explicitly loaded
+## When to Use Each
+
+| Situation | Use |
+|-----------|-----|
+| Need step-by-step workflow guidance | Skill |
+| Need bundled scripts for a task | Skill |
+| Need to remember a pattern or rule | Lesson |
+| Guidance should auto-activate on keywords | Lesson |
 
 ## Available Skills
 
-Agent-specific skills go here. Shared/reusable skills live in `gptme-contrib/skills/`:
+Shared skills in `gptme-contrib/skills/` are ready to use:
 
-| Skill | Purpose |
-|-------|---------|
-| `gptme-contrib/skills/template-skill` | Starting point for new skills |
-| `gptme-contrib/skills/code-review-helper` | Structured code review workflow |
-| `gptme-contrib/skills/progressive-disclosure` | Managing information density |
-| `gptme-contrib/skills/artifact-publishing` | Publishing artifacts (blog, twitter, github) |
+| Skill | When to use |
+|-------|-------------|
+| `template-skill` | Starting point when creating a new skill |
+| `code-review-helper` | Structured PR review workflow |
+| `progressive-disclosure` | Managing context/information density |
+| `artifact-publishing` | Publishing blog posts, tweets, GitHub releases |
+
+Agent-specific skills go in this directory (`skills/`).
 
 ## Creating a Skill
 
-1. Create a directory: `skills/my-skill/`
-2. Add `skills/my-skill/SKILL.md` with YAML frontmatter:
+1. Create `skills/my-skill/SKILL.md` with YAML frontmatter:
 
 ```yaml
 ---
 name: my-skill
-description: One-line description of what this skill does
+description: One-line description of what this skill does and when to invoke it
 ---
+
+# My Skill
+
+Instructions for executing the skill...
 ```
 
-3. Add helper scripts, templates, or resources in the same directory
+2. Add helper scripts, templates, or resources in `skills/my-skill/`
 
-## Configuration
-
-Skills are discovered via `gptme.toml`:
-
-```toml
-[lessons]
-dirs = ["lessons", "skills", "gptme-contrib/lessons", "gptme-contrib/skills"]
-```
-
-The `skills/` directory is searched alongside `lessons/` for skill files.
+Skills are discovered automatically via `gptme.toml` — no extra config needed once the `skills/` dir is in `[lessons] dirs`.
 
 ## Related
 
-- [gptme-contrib/skills/](../gptme-contrib/skills/README.md) — Shared skills
+- [gptme-contrib/skills/](../gptme-contrib/skills/README.md) — Shared skills library
 - [lessons/README.md](../lessons/README.md) — Lesson system
