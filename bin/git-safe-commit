@@ -1,0 +1,30 @@
+#!/bin/bash
+# git-safe-commit: Serialize git commits to prevent concurrent staging conflicts
+#
+# Problem: When multiple sessions (autonomous, operator, meta-operator) run
+# concurrently on the same repo, they share .git/index. prek's stash/restore
+# cycle during pre-commit hooks can race with concurrent commits, causing:
+#   - Wrong files in commits (staged by another session)
+#   - prek stash-restore conflicts that silently revert edits
+#   - Wasted tokens re-doing work that was lost
+#
+# Solution: flock serializes the entire commit (including pre-commit hooks)
+# so prek's stash/restore is atomic from other sessions' perspective.
+#
+# Usage: git-safe-commit file1.py file2.py -m "feat: description"
+#        (same arguments as `git commit`)
+#
+# See: https://github.com/gptme/gptme-agent-template/issues/75
+
+set -uo pipefail
+
+GIT_DIR="$(git rev-parse --git-dir 2>/dev/null)" || true
+if [ -z "$GIT_DIR" ]; then
+    echo "error: not in a git repository" >&2
+    exit 1
+fi
+
+LOCKFILE="$GIT_DIR/commit.lock"
+
+# Serialize commits with 60s timeout (prek hooks can take ~30s)
+exec flock --timeout 60 "$LOCKFILE" git commit "$@"

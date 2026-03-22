@@ -38,7 +38,8 @@ echo "entry" >> journal/2025-10-14/topic.md
 - **External repos**: Use branches + PRs from worktrees at `/tmp/worktrees/<repo>/<branch>/`
 - **Stage explicitly**: Use `git add <files>`, never `git add .` or `git commit -a`
 - **Multi-session safety**: If running concurrent sessions (autonomous + operator), use
-  `git safe-commit` (flock-based wrapper) to prevent prek stash/restore race conditions:
+  `git safe-commit` (flock-based wrapper in `bin/`) to prevent prek stash/restore race conditions.
+  Requires `bin/` in PATH (e.g. `export PATH="$PWD/bin:$PATH"` in `.envrc`):
   ```bash
   git safe-commit file1.py file2.py -m "feat: description"
   ```
