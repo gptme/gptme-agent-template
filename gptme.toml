@@ -23,3 +23,22 @@ context_cmd = "scripts/context.sh"
 # External skills (Anthropic SKILL.md format) are crawled from all dirs.
 # First dir wins on filename collision, so agent-specific files take precedence.
 dirs = ["lessons", "skills", "gptme-contrib/lessons", "gptme-contrib/skills"]
+
+[plugins]
+# Plugin directories to search for custom plugins
+# paths = ["plugins"]
+# enabled = ["my_plugin"]
+
+[env]
+# Environment variables available to the agent
+# GPTME_TTS_VOICE = "am_adam"  # for Kokoro TTS
+# GPTME_LESSONS_TS_STATE = "state/lesson-thompson/bandit-state.json"
+
+# [mcp]
+# enabled = false
+# auto_start = false
+#
+# [[mcp.servers]]
+# name = "example-mcp-server"
+# command = "npx"
+# args = ["-y", "example-mcp-server"]

@@ -37,6 +37,12 @@ echo "entry" >> journal/2025-10-14/topic.md
 - **Workspace repo**: Commit directly to master for docs/journal/tasks
 - **External repos**: Use branches + PRs from worktrees at `/tmp/worktrees/<repo>/<branch>/`
 - **Stage explicitly**: Use `git add <files>`, never `git add .` or `git commit -a`
+- **Multi-session safety**: If running concurrent sessions (autonomous + operator), use
+  `git safe-commit` (flock-based wrapper in `bin/`) to prevent prek stash/restore race conditions.
+  Requires `bin/` in PATH (e.g. `export PATH="$PWD/bin:$PATH"` in `.envrc`):
+  ```bash
+  git safe-commit file1.py file2.py -m "feat: description"
+  ```
 - **PR merge strategy**: Always `--squash` when merging
 - **No AI attribution**: Never add `Co-Authored-By: Claude` or "Generated with Claude Code" to commits/PRs
 
@@ -63,6 +69,12 @@ echo "entry" >> journal/2025-10-14/topic.md
 ### Pre-Commit Hooks
 
 Run automatically on commit. Don't bypass with `--no-verify` unless explicitly asked.
+
+> **Important**: Always ensure gptme-contrib submodule is up to date before running hooks:
+> ```bash
+> git submodule update --init --recursive
+> ```
+> This prevents false positives in link checking for files referenced from `gptme-contrib/lessons/`.
 
 ```bash
 # Fix formatting
@@ -150,4 +162,55 @@ See #42 for context.
 <!-- Correct: links to the intended repo -->
 See gptme/gptme#42 for context.
 See https://github.com/gptme/gptme/issues/42 for context.
+```
+
+## Troubleshooting
+
+### Pre-Commit Hooks Failing
+
+```bash
+# Update submodule first (fixes false positive link errors)
+git submodule update --init --recursive
+
+# Fix formatting issues
+make format
+
+# Run all hooks to see what's failing
+make check
+
+# If mypy fails, check packages are installed
+uv sync --all-packages
+```
+
+### Import Errors
+
+```bash
+# Reinstall all workspace packages
+uv sync --all-packages
+
+# Verify package is installed
+uv pip list | grep <package-name>
+```
+
+### Context Script Slow or Failing
+
+```bash
+# Test context generation
+time ./scripts/context.sh > /dev/null
+
+# If failing, check dependencies
+which gptodo gh git
+```
+
+### gptme-contrib Submodule Issues
+
+```bash
+# Submodule not initialized
+git submodule update --init --recursive
+
+# Submodule out of date
+git submodule update --remote gptme-contrib
+
+# "core.bare" error in submodule
+git config --file .git/modules/gptme-contrib/config --unset core.bare
 ```
