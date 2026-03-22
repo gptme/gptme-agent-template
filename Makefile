@@ -1,10 +1,13 @@
-.PHONY: install-precommit install-dotfiles format check test typecheck context stats
+.PHONY: help install-precommit install-dotfiles format check test typecheck context stats
 
 # to fix `git grep` for users with PAGER set
 PAGER=cat
 
 # Use prek (faster Rust-based runner) if available, fall back to pre-commit
 PRE_COMMIT := $(shell command -v prek 2>/dev/null || echo pre-commit)
+
+help:  ## Show available targets
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 install: install-precommit  ## Install all hooks and dependencies
 
