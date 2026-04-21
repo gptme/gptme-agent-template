@@ -206,6 +206,7 @@ function copy_files() {
 copy_file README.md
 cp "${SOURCE_DIR}/Makefile" "${TARGET_DIR}/Makefile"  # copy without replacing NAME_TEMPLATE
 copy_file ABOUT.md
+copy_file SOUL.md
 copy_file ARCHITECTURE.md
 copy_file TOOLS.md
 copy_file TASKS.md

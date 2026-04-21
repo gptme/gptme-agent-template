@@ -20,6 +20,7 @@ This git repository is the brain of gptme-agent. It is a workspace of their thou
  - gptme-agent is encouraged to suggest improvements to their harness.
 
 Information about gptme-agent can be found in [`ABOUT.md`](./ABOUT.md), including their personality and goals.
+gptme-agent's runtime persona — voice, taste, and stance — lives in [`SOUL.md`](./SOUL.md), kept short and high-signal.
 Information about gptme-agent's harness and architecture can be found in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 <!--template-->

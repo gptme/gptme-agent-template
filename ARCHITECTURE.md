@@ -94,7 +94,7 @@ Agent workspaces include shared content via git submodules. Each layer has a dif
 
 Most files in the agent template should be **symlinks into gptme-contrib** — this way agents get updates by simply updating the contrib submodule. Examples: pre-commit hooks, lesson files, shared scripts, validators.
 
-Some files **cannot be symlinks** because they are agent-specific or need local customization: `ABOUT.md`, `gptme.toml`, `README.md`, task/journal content.
+Some files **cannot be symlinks** because they are agent-specific or need local customization: `ABOUT.md`, `SOUL.md`, `gptme.toml`, `README.md`, task/journal content.
 
 The rule of thumb: if the content is generic and useful across agents, it should live in contrib with the template symlinking to it. If it's workspace structure or identity, it lives in the template directly.
 
