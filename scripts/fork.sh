@@ -210,6 +210,7 @@ copy_file SOUL.md
 copy_file ARCHITECTURE.md
 copy_file TOOLS.md
 copy_file TASKS.md
+copy_file WORKFLOW.md
 copy_file gptme.toml
 copy_file .pre-commit-config.yaml
 copy_file .gitignore
