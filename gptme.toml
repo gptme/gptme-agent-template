@@ -11,6 +11,7 @@ files = [
   "TOOLS.md",
   "lessons/README.md",
   "projects/README.md",
+  # "WORKFLOW.md",  # rendered at run time by scripts/workflow-render.py — do not inject raw
   "gptme.toml"
 ]
 context_cmd = "scripts/context.sh"
