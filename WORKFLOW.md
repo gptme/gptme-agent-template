@@ -6,19 +6,20 @@
 # Markdown body: agent instructions with {{PLACEHOLDER}} injection.
 #
 # Placeholders (set at run time by workflow-render.py):
-#   WORKSPACE   — repo root
-#   DATE        — today's date (YYYY-MM-DD)
-#   AGENT_NAME  — your agent's name
-#   CREATOR     — your human collaborator's name/call-name
+#   WORKSPACE    — repo root absolute path
+#   DATE         — today's date (YYYY-MM-DD)
+#   AGENT_NAME   — your agent's name
+#   CREATOR      — your human collaborator's name/call-name
+#   SESSION_HASH — short hash identifying this session run
 
 harness:
   allowed:
     - gptme
     - claude-code
   default: gptme
-  model_routing:
-    gptme: "openrouter/deepseek/deepseek-v4-flash@deepseek"
-    claude-code: "claude-sonnet-4-5"
+  # model_routing: customize per-harness model in your fork, e.g.:
+  #   gptme: "openrouter/anthropic/claude-3.5-sonnet"
+  #   claude-code: "claude-sonnet-4-5"
 
 tracker:
   kind: gptodo
@@ -35,7 +36,7 @@ workspace:
   state_dir: "{{WORKSPACE}}/state"
 
 hooks:
-  post_commit: "git push origin master"
+  post_commit: "git push origin HEAD"
 
 context:
   prebuilt:
@@ -113,7 +114,7 @@ Do the work:
 1. Log progress in `journal/{{DATE}}/autonomous-session-{{SESSION_HASH}}.md`
    using the standard template (see any existing journal entry for format).
 2. Commit with a descriptive conventional commit message.
-3. Push to origin: `git push origin master`.
+3. Push to origin: `git push origin HEAD`.
 
 ---
 
