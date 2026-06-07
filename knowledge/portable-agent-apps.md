@@ -16,8 +16,6 @@ Examples:
 The useful shape is one shared workflow contract with thin runtime adapters.
 Do not maintain separate full prompts for every harness.
 
-Source design note: [originating design note](https://github.com/TimeToBuild%42ob/%62ob/blob/master/knowledge/technical-designs/portable-agent-app-packaging.md).
-
 ## Core Rule
 
 Keep workflow truth in one place.
