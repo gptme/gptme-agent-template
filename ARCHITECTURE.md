@@ -8,6 +8,7 @@ This workspace implements a forkable agent architecture, designed to be used as 
 
 - Forking process: See [`knowledge/agent-forking.md`](./knowledge/agent-forking.md)
 - Workspace structure: See [`knowledge/forking-workspace.md`](./knowledge/forking-workspace.md)
+- Domain agent apps: See [`knowledge/portable-agent-apps.md`](./knowledge/portable-agent-apps.md)
 
 ## Tools
 

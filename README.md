@@ -174,6 +174,13 @@ git submodule update --init --recursive
 Then follow the instructions in the output.
 <!--/template-->
 
+## Domain Agent Apps
+
+Use [`knowledge/portable-agent-apps.md`](./knowledge/portable-agent-apps.md)
+when packaging a domain-specific agent app from this template. The short version:
+keep one shared workflow contract, expose it through thin runtime adapters, and
+preserve user-owned state across system updates.
+
 ## Workspace Structure
 
  - gptme-agent keeps track of tasks in [`TASKS.md`](./TASKS.md)
