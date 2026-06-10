@@ -36,6 +36,15 @@ dirs = ["lessons", "skills", "gptme-contrib/lessons", "gptme-contrib/skills"]
 # GPTME_TTS_VOICE = "am_adam"  # for Kokoro TTS
 # GPTME_LESSONS_TS_STATE = "state/lesson-thompson/bandit-state.json"
 
+# [models]
+# Quick-switch favorites in the webui model picker.
+# See: https://gptme.org/docs/model-routing.html (gptme#2811)
+# favorites = [
+#     "anthropic/claude-haiku-4-5-20251001",
+#     "anthropic/claude-sonnet-4-6",
+#     "anthropic/claude-opus-4-8",
+# ]
+
 # [mcp]
 # enabled = false
 # auto_start = false
