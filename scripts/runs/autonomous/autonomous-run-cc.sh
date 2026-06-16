@@ -81,6 +81,40 @@ git pull --rebase --autostash 2>&1 || {
     log "WARN: git pull failed, continuing with local state"
 }
 
+# --- Optional trigger gate ---
+run_session_gate() {
+    if [ "${SESSION_GATE_ENABLED:-false}" != "true" ]; then
+        return 0
+    fi
+
+    local gate_script="$WORKSPACE/scripts/runs/autonomous/session-gate.py"
+    if [ ! -f "$gate_script" ]; then
+        log "ERROR: SESSION_GATE_ENABLED=true but $gate_script is missing"
+        exit 2
+    fi
+
+    set +e
+    python3 "$gate_script" --workspace "$WORKSPACE" --verbose
+    local gate_status=$?
+    set -e
+
+    case "$gate_status" in
+        0)
+            log "Session gate found no triggers; skipping this scheduled run"
+            exit 0
+            ;;
+        1)
+            log "Session gate found triggers; continuing"
+            ;;
+        *)
+            log "ERROR: Session gate failed with exit code $gate_status"
+            exit "$gate_status"
+            ;;
+    esac
+}
+
+run_session_gate
+
 # --- Build system prompt ---
 SYSPROMPT_FILE=$(mktemp "/tmp/${AGENT_NAME,,}-sysprompt-XXXXXX")
 trap 'release_lock; rm -f "$SYSPROMPT_FILE"' EXIT INT TERM HUP

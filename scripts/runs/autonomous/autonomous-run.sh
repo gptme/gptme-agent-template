@@ -66,6 +66,39 @@ if [ -f "$SCRIPT_DIR/generate-work-queue.py" ]; then
     "$SCRIPT_DIR/generate-work-queue.py" 2>&1 || log "⚠️  Work queue generation encountered issues"
 fi
 
+run_session_gate() {
+    if [ "${SESSION_GATE_ENABLED:-false}" != "true" ]; then
+        return 0
+    fi
+
+    local gate_script="$WORKSPACE/scripts/runs/autonomous/session-gate.py"
+    if [ ! -f "$gate_script" ]; then
+        log "ERROR: SESSION_GATE_ENABLED=true but $gate_script is missing"
+        exit 2
+    fi
+
+    set +e
+    python3 "$gate_script" --workspace "$WORKSPACE" --verbose
+    local gate_status=$?
+    set -e
+
+    case "$gate_status" in
+        0)
+            log "Session gate found no triggers; skipping this scheduled run"
+            exit 0
+            ;;
+        1)
+            log "Session gate found triggers; continuing"
+            ;;
+        *)
+            log "ERROR: Session gate failed with exit code $gate_status"
+            exit "$gate_status"
+            ;;
+    esac
+}
+
+run_session_gate
+
 # Enable chat history for context continuity
 export GPTME_CHAT_HISTORY=true
 
