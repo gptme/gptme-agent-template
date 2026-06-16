@@ -4,7 +4,7 @@ import importlib.util
 import json
 import os
 import sys
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 SCRIPT = (
@@ -19,6 +19,7 @@ assert SPEC and SPEC.loader
 session_gate = importlib.util.module_from_spec(SPEC)
 sys.modules["session_gate"] = session_gate
 SPEC.loader.exec_module(session_gate)
+UTC = timezone.utc
 
 
 def run_gate(workspace: Path, *args: str) -> int:

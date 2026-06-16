@@ -14,13 +14,14 @@ import json
 import os
 import subprocess
 import sys
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 SKIP = 0
 RUN = 1
 ERROR = 2
+UTC = timezone.utc
 
 
 def parse_dt(value: str | None) -> datetime | None:
