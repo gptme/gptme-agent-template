@@ -190,6 +190,37 @@ Adjust `SCRIPT_TIMEOUT` in the script based on your schedule:
 - Hourly runs: 3000 seconds (50 minutes)
 - Every 2 hours: 6000 seconds (100 minutes)
 
+### Enable the Session Gate
+
+High-frequency schedules can waste budget when there is no inbox, GitHub,
+stale-work, or pacing reason to wake the agent. Both runner scripts support an
+opt-in gate before the model starts:
+
+```bash
+export SESSION_GATE_ENABLED=true
+export SESSION_GATE_MIN_INTERVAL_MINUTES=30
+export SESSION_GATE_MAX_INTERVAL_HOURS=24
+```
+
+The gate contract is intentionally small:
+- exit `0`: no trigger, skip this scheduled run
+- exit `1`: trigger found, continue into the model run
+- exit `2`: gate error
+
+Do not call the gate under raw `set -e` without capturing the exit code. Exit
+`1` means "run needed", not "failure"; the template runners already handle this.
+
+Supported generic triggers:
+- `SESSION_GATE_INBOX_PATHS` scans comma-separated inbox files/directories for
+  `needs_reply: true`, `needs-reply: true`, `replied: false`, or `unread: true`.
+- `SESSION_GATE_GITHUB_COMMAND` runs an optional local command; successful
+  non-empty output triggers a run. Keep repo-specific `gh` queries in your local
+  service environment, not in the template.
+- `SESSION_GATE_STALE_WORK_PATHS` wakes a maintenance run when configured
+  files/directories are older than `SESSION_GATE_STALE_WORK_MINUTES`.
+- `SESSION_GATE_MIN_INTERVAL_MINUTES` and `SESSION_GATE_MAX_INTERVAL_HOURS`
+  provide usage pacing even when other triggers are quiet.
+
 ### Add Pre-Run Checks
 Add validation scripts before `gptme` execution:
 ```bash
