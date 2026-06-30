@@ -58,6 +58,3 @@ parser.add_argument("--user-context", dest="user_context",
 - Benchmark scores reflect the model+prompt under test, not the operator's local config
 - `cleanup()` is safe to call twice (defensive `__del__` doesn't blow up)
 - External callers that pass their own `host_dir` still own it — no surprise deletes
-
-## Related
-- Companion doc: `knowledge/lessons/tools/eval-env-isolation.md`
