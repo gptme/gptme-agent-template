@@ -52,4 +52,4 @@ Err(_) => { eprintln!("Error: failed to get db path"); exit(1); }
 - Error formatting stays consistent with the file's existing conventions
 
 ## Related
-- [exit-code-127-use-uv-run.md](./exit-code-127-use-uv-run.md) — another CI-gate-only failure class
+- [exit-code-127-use-uv-run.md](./exit-code-127-use-uv-run.md) — another toolchain-availability failure class
