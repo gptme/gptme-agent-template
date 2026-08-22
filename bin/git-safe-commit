@@ -10,11 +10,11 @@
 #
 # Solution: flock serializes the entire commit (including pre-commit hooks)
 # so prek's stash/restore is atomic from other sessions' perspective.
+# Implicit whole-index commits (no pathspecs) are refused so a concurrent
+# session cannot pick up another session's staged files.
 #
 # Usage: git-safe-commit file1.py file2.py -m "feat: description"
-#        (same arguments as `git commit`)
-#
-# See: https://github.com/gptme/gptme-agent-template/issues/75
+#        (same arguments as `git commit`; pathspecs required)
 
 set -uo pipefail
 
@@ -25,6 +25,49 @@ if [ -z "$GIT_DIR" ]; then
 fi
 
 LOCKFILE="$GIT_DIR/commit.lock"
+
+PATHSPEC_COUNT=0
+SKIP_NEXT_ARG=0
+PARSE_AFTER_DASHDASH=0
+
+for arg in "$@"; do
+    if [ "$SKIP_NEXT_ARG" -eq 1 ]; then
+        SKIP_NEXT_ARG=0
+        continue
+    fi
+    if [ "$PARSE_AFTER_DASHDASH" -eq 1 ]; then
+        PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
+        continue
+    fi
+    case "$arg" in
+        --)
+            PARSE_AFTER_DASHDASH=1
+            ;;
+        -m|--message|-F|--file|-c|--reedit-message|-C|--reuse-message|--fixup|--squash|--author|--date|--trailer)
+            SKIP_NEXT_ARG=1
+            ;;
+        --pathspec-from-file)
+            SKIP_NEXT_ARG=1
+            PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
+            ;;
+        --message=*|--file=*|--author=*|--date=*|--fixup=*|--squash=*|--trailer=*)
+            ;;
+        --pathspec-from-file=*)
+            PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
+            ;;
+        -*)
+            ;;
+        *)
+            PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
+            ;;
+    esac
+done
+
+if [ "$PATHSPEC_COUNT" -eq 0 ]; then
+    echo "Refusing implicit whole-index commit in shared repo" >&2
+    echo "Use explicit file paths: git-safe-commit file1.py file2.py -m \"...\"" >&2
+    exit 1
+fi
 
 # Serialize commits with 60s timeout (prek hooks can take ~30s)
 exec flock --timeout 60 "$LOCKFILE" git commit "$@"

@@ -36,13 +36,16 @@ echo "entry" >> journal/2025-10-14/topic.md
 - **Commit messages**: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`)
 - **Workspace repo**: Commit directly to master for docs/journal/tasks
 - **External repos**: Use branches + PRs from worktrees at `/tmp/worktrees/<repo>/<branch>/`
-- **Stage explicitly**: Use `git add <files>`, never `git add .` or `git commit -a`
-- **Multi-session safety**: If running concurrent sessions (autonomous + operator), use
-  `git safe-commit` (flock-based wrapper in `bin/`) to prevent prek stash/restore race conditions.
-  Requires `bin/` in PATH (e.g. `export PATH="$PWD/bin:$PATH"` in `.envrc`):
+- **Always commit with explicit file paths** — never `git add .` or `git commit -a`.
+  Concurrent sessions share one index; an implicit commit can pick up another
+  session's staged files.
+- **Shared-worktree commits**: Multiple concurrent sessions on one worktree will
+  race prek's stash/restore. Use `git-safe-commit` (hyphenated; flock wrapper in
+  `bin/`) with explicit paths:
   ```bash
-  git safe-commit file1.py file2.py -m "feat: description"
+  git-safe-commit file1.py file2.py -m "feat: description"
   ```
+  Requires `bin/` in PATH (e.g. `export PATH="$PWD/bin:$PATH"` in `.envrc`).
 - **PR merge strategy**: Always `--squash` when merging
 - **No AI attribution**: Never add `Co-Authored-By: Claude` or "Generated with Claude Code" to commits/PRs
 

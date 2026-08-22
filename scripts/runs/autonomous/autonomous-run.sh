@@ -164,7 +164,7 @@ Keep documentation BRIEF (2-5 min max):
    - One-line "Current Run" status
    - Refresh "Planned Next" (3 tasks)
    - Update timestamp
-3. Commit: \`git add journal/\*.md state/queue-manual.md && git commit -m "docs: session updates" && git push\`
+3. Commit: \`git-safe-commit journal/<today>/*.md state/queue-manual.md -m "docs: session updates" && git push\`
 4. Use \`complete\` tool when finished
 
 Begin your autonomous work session now.

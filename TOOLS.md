@@ -117,7 +117,7 @@ python3 ./scripts/migrate-journals.py
 ### Committing changes
 1. `make format` — fix formatting
 2. `git add <files>` — stage explicitly
-3. `git commit -m "type: description"` — conventional commits
+3. `git-safe-commit <files> -m "type: description"` — conventional commits, explicit paths
 4. Pre-commit hooks run automatically
 
 ### Finding information
