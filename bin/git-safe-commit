@@ -29,8 +29,15 @@ LOCKFILE="$GIT_DIR/commit.lock"
 PATHSPEC_COUNT=0
 SKIP_NEXT_ARG=0
 PARSE_AFTER_DASHDASH=0
+PATHSPEC_FILE_NEXT=0
 
 for arg in "$@"; do
+    if [ "$PATHSPEC_FILE_NEXT" -eq 1 ]; then
+        PATHSPEC_FILE_NEXT=0
+        # Only count if file has content; empty file (e.g. /dev/null) means no pathspecs
+        [ -s "$arg" ] && PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
+        continue
+    fi
     if [ "$SKIP_NEXT_ARG" -eq 1 ]; then
         SKIP_NEXT_ARG=0
         continue
@@ -43,17 +50,17 @@ for arg in "$@"; do
         --)
             PARSE_AFTER_DASHDASH=1
             ;;
-        -m|--message|-F|--file|-c|--reedit-message|-C|--reuse-message|--fixup|--squash|--author|--date|--trailer|-t|--template|--cleanup)
+        -m|--message|-F|--file|-c|--reedit-message|-C|--reuse-message|--fixup|--squash|--author|--date|--trailer|-t|--template|--cleanup|-S|--gpg-sign)
             SKIP_NEXT_ARG=1
             ;;
         --pathspec-from-file)
-            SKIP_NEXT_ARG=1
-            PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
+            PATHSPEC_FILE_NEXT=1
             ;;
-        --message=*|--file=*|--author=*|--date=*|--fixup=*|--squash=*|--trailer=*|--template=*|--reedit-message=*|--reuse-message=*|--cleanup=*)
+        --message=*|--file=*|--author=*|--date=*|--fixup=*|--squash=*|--trailer=*|--template=*|--reedit-message=*|--reuse-message=*|--cleanup=*|--gpg-sign=*)
             ;;
         --pathspec-from-file=*)
-            PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
+            pfile="${arg#--pathspec-from-file=}"
+            [ -s "$pfile" ] && PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
             ;;
         -*)
             ;;

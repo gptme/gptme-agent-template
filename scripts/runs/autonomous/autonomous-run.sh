@@ -26,12 +26,6 @@ REPO_NAME="your-agent-workspace"  # Replace with your workspace repo name
 SCRIPT_TIMEOUT=3000  # 50 minutes in seconds (allows hourly scheduling with buffer)
 # ========================================
 
-# Determine script directory for relative paths
-REPO_DIR="$(git rev-parse --show-toplevel)"
-SCRIPT_DIR="$REPO_DIR/scripts"
-# Ensure bin/ is on PATH so git-safe-commit is resolvable
-export PATH="$REPO_DIR/bin:$PATH"
-
 # Function to log with timestamp
 log() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
@@ -58,6 +52,10 @@ trap 'log "ERROR: Script failed at line $LINENO"' ERR
 # Pull latest changes from remote
 log "Pulling latest changes from git..."
 cd "$WORKSPACE"
+# Compute REPO_DIR after cd so bin/ always resolves to the workspace repo
+REPO_DIR="$(git rev-parse --show-toplevel)"
+SCRIPT_DIR="$REPO_DIR/scripts"
+export PATH="$REPO_DIR/bin:$PATH"
 if ! git pull; then
     log "WARNING: Git pull failed, continuing with current state"
 fi
