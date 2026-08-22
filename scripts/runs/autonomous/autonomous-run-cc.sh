@@ -22,8 +22,6 @@ WORKSPACE="$(cd "$(dirname "$0")/../../.." && pwd)"
 SCRIPT_TIMEOUT=3000  # 50 minutes
 MODEL="sonnet"       # Default model (sonnet/opus/haiku)
 # ========================================
-# Ensure bin/ is on PATH so git-safe-commit is resolvable
-export PATH="$WORKSPACE/bin:$PATH"
 
 # Parse args
 while [[ $# -gt 0 ]]; do
@@ -40,6 +38,9 @@ if [ -f ~/.profile ]; then
     # shellcheck source=/dev/null
     source ~/.profile 2>/dev/null || true
 fi
+
+# Ensure bin/ is on PATH after profile sourcing so it survives any profile PATH reset
+export PATH="$WORKSPACE/bin:$PATH"
 
 cd "$WORKSPACE"
 
