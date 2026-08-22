@@ -43,14 +43,14 @@ for arg in "$@"; do
         --)
             PARSE_AFTER_DASHDASH=1
             ;;
-        -m|--message|-F|--file|-c|--reedit-message|-C|--reuse-message|--fixup|--squash|--author|--date|--trailer|-t|--template)
+        -m|--message|-F|--file|-c|--reedit-message|-C|--reuse-message|--fixup|--squash|--author|--date|--trailer|-t|--template|--cleanup)
             SKIP_NEXT_ARG=1
             ;;
         --pathspec-from-file)
             SKIP_NEXT_ARG=1
             PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
             ;;
-        --message=*|--file=*|--author=*|--date=*|--fixup=*|--squash=*|--trailer=*|--template=*|--reedit-message=*|--reuse-message=*)
+        --message=*|--file=*|--author=*|--date=*|--fixup=*|--squash=*|--trailer=*|--template=*|--reedit-message=*|--reuse-message=*|--cleanup=*)
             ;;
         --pathspec-from-file=*)
             PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
