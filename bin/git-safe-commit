@@ -31,6 +31,16 @@ SKIP_NEXT_ARG=0
 PARSE_AFTER_DASHDASH=0
 PATHSPEC_FILE_NEXT=0
 
+# Exclusion-only pathspecs (e.g. :^README.md, :!foo, :(exclude)bar) don't
+# positively select files — counting them would let an attacker bypass the guard
+# while still committing the whole index minus a few excluded paths.
+is_exclusion_only_pathspec() {
+    case "$1" in
+        ":(exclude"*|":!"*|":^"*) return 0 ;;
+    esac
+    return 1
+}
+
 for arg in "$@"; do
     if [ "$PATHSPEC_FILE_NEXT" -eq 1 ]; then
         PATHSPEC_FILE_NEXT=0
@@ -43,14 +53,14 @@ for arg in "$@"; do
         continue
     fi
     if [ "$PARSE_AFTER_DASHDASH" -eq 1 ]; then
-        PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
+        is_exclusion_only_pathspec "$arg" || PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
         continue
     fi
     case "$arg" in
         --)
             PARSE_AFTER_DASHDASH=1
             ;;
-        -m|--message|-F|--file|-c|--reedit-message|-C|--reuse-message|--fixup|--squash|--author|--date|--trailer|-t|--template|--cleanup|-S|--gpg-sign)
+        -m|--message|-F|--file|-c|--reedit-message|-C|--reuse-message|--fixup|--squash|--author|--date|--trailer|-t|--template|--cleanup)
             SKIP_NEXT_ARG=1
             ;;
         --pathspec-from-file)
@@ -65,7 +75,7 @@ for arg in "$@"; do
         -*)
             ;;
         *)
-            PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
+            is_exclusion_only_pathspec "$arg" || PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
             ;;
     esac
 done
