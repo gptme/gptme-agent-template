@@ -29,6 +29,8 @@ SCRIPT_TIMEOUT=3000  # 50 minutes in seconds (allows hourly scheduling with buff
 # Determine script directory for relative paths
 REPO_DIR="$(git rev-parse --show-toplevel)"
 SCRIPT_DIR="$REPO_DIR/scripts"
+# Ensure bin/ is on PATH so git-safe-commit is resolvable
+export PATH="$REPO_DIR/bin:$PATH"
 
 # Function to log with timestamp
 log() {

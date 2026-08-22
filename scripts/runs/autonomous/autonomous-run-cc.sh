@@ -22,6 +22,8 @@ WORKSPACE="$(cd "$(dirname "$0")/../../.." && pwd)"
 SCRIPT_TIMEOUT=3000  # 50 minutes
 MODEL="sonnet"       # Default model (sonnet/opus/haiku)
 # ========================================
+# Ensure bin/ is on PATH so git-safe-commit is resolvable
+export PATH="$WORKSPACE/bin:$PATH"
 
 # Parse args
 while [[ $# -gt 0 ]]; do
