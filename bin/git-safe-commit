@@ -31,21 +31,43 @@ SKIP_NEXT_ARG=0
 PARSE_AFTER_DASHDASH=0
 PATHSPEC_FILE_NEXT=0
 
-# Exclusion-only pathspecs (e.g. :^README.md, :!foo, :(exclude)bar) don't
-# positively select files — counting them would let an attacker bypass the guard
-# while still committing the whole index minus a few excluded paths.
+# Exclusion-only pathspecs (e.g. :^README.md, :!foo, :(exclude)bar,
+# :(icase,exclude)bar) don't positively select files — counting them would let
+# an invocation bypass the guard while still committing the whole index minus
+# excluded paths.
 is_exclusion_only_pathspec() {
     case "$1" in
-        ":(exclude"*|":!"*|":^"*) return 0 ;;
+        ":!"*|":^"*) return 0 ;;
+        ":("*)
+            # Extract attrs between :( and first ); check for 'exclude' token
+            local magic="${1%%)*}"
+            magic="${magic#:(}"
+            case ",$magic," in
+                *",exclude,"*) return 0 ;;
+            esac
+            ;;
     esac
+    return 1
+}
+
+# Returns 0 if the pathspec file contains at least one positive (non-blank,
+# non-exclusion-only) pathspec line; 1 otherwise.
+pathspec_file_has_positive() {
+    local f="$1"
+    [ -f "$f" ] || return 1
+    local line
+    while IFS= read -r line || [ -n "$line" ]; do
+        [ -z "$line" ] && continue
+        is_exclusion_only_pathspec "$line" && continue
+        return 0
+    done < "$f"
     return 1
 }
 
 for arg in "$@"; do
     if [ "$PATHSPEC_FILE_NEXT" -eq 1 ]; then
         PATHSPEC_FILE_NEXT=0
-        # Only count if file has content; empty file (e.g. /dev/null) means no pathspecs
-        [ -s "$arg" ] && PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
+        pathspec_file_has_positive "$arg" && PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
         continue
     fi
     if [ "$SKIP_NEXT_ARG" -eq 1 ]; then
@@ -70,7 +92,7 @@ for arg in "$@"; do
             ;;
         --pathspec-from-file=*)
             pfile="${arg#--pathspec-from-file=}"
-            [ -s "$pfile" ] && PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
+            pathspec_file_has_positive "$pfile" && PATHSPEC_COUNT=$((PATHSPEC_COUNT + 1))
             ;;
         -*)
             ;;
