@@ -144,6 +144,14 @@ gptme-agent stop                # Pause scheduled runs
 
 See the [gptme agents documentation](https://gptme.org/docs/agents.html) for service installation and management commands.
 
+**Alternative — native `gptme service init`**: If you prefer to scaffold a bare headless agent yourself (systemd unit + startup script + skeleton `gptme.toml`/`AGENTS.md`) instead of forking this template, recent gptme builds ship a built-in CLI:
+
+```sh
+gptme service init --name myagent --model gpt-4o-mini --work-dir ~/gptme-agent
+```
+
+This generates a systemd user service (with optional timer) that runs the agent headlessly — the same pattern a reference agent uses to run hundreds of autonomous sessions/day. Run `gptme service init --help` for all options. It's a great complement to this template: fork the template for a full workspace, or `service init` for a minimal one.
+
 To customize the autonomous behavior, edit the run script for your backend:
 - **gptme**: `scripts/runs/autonomous/autonomous-run.sh`
 - **Claude Code**: `scripts/runs/autonomous/autonomous-run-cc.sh`
