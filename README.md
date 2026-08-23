@@ -156,6 +156,16 @@ To customize the autonomous behavior, edit the run script for your backend:
 - Safety guardrails (GREEN/YELLOW/RED operation classification)
 - Session documentation and state management
 - **Multi-backend**: Supports both gptme and Claude Code backends
+
+### Minimal Headless Alternative
+
+If you don't need the full template workspace, gptme ships a built-in CLI to scaffold a bare headless agent (systemd user service + startup script + skeleton `gptme.toml`/`AGENTS.md`):
+
+```sh
+gptme service init --name myagent --model gpt-4o-mini --work-dir ~/gptme-agent
+```
+
+Run `gptme service init --help` for all options. Fork this template for a full agent workspace; use `gptme service init` for a minimal one.
 <!--/autonomous-->
 
 <!--template-->
