@@ -55,10 +55,18 @@ is_exclusion_only_pathspec() {
 pathspec_file_has_positive() {
     local f="$1"
     [ -f "$f" ] || return 1
-    local line
+    local line canonical
     while IFS= read -r line || [ -n "$line" ]; do
         [ -z "$line" ] && continue
-        is_exclusion_only_pathspec "$line" && continue
+        # git C-unquotes pathspec file lines that start with "; strip outer
+        # quotes so ":!foo" is checked as :!foo (exclusion-only), not as a
+        # literal positive pathspec that bypasses the guard.
+        if [[ "$line" == '"'*'"' ]]; then
+            canonical="${line:1:${#line}-2}"
+        else
+            canonical="$line"
+        fi
+        is_exclusion_only_pathspec "$canonical" && continue
         return 0
     done < "$f"
     return 1
