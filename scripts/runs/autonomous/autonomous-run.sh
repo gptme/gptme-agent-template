@@ -26,10 +26,6 @@ REPO_NAME="your-agent-workspace"  # Replace with your workspace repo name
 SCRIPT_TIMEOUT=3000  # 50 minutes in seconds (allows hourly scheduling with buffer)
 # ========================================
 
-# Determine script directory for relative paths
-REPO_DIR="$(git rev-parse --show-toplevel)"
-SCRIPT_DIR="$REPO_DIR/scripts"
-
 # Function to log with timestamp
 log() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
@@ -56,6 +52,10 @@ trap 'log "ERROR: Script failed at line $LINENO"' ERR
 # Pull latest changes from remote
 log "Pulling latest changes from git..."
 cd "$WORKSPACE"
+# Compute REPO_DIR after cd so bin/ always resolves to the workspace repo
+REPO_DIR="$(git rev-parse --show-toplevel)"
+SCRIPT_DIR="$REPO_DIR/scripts"
+export PATH="$REPO_DIR/bin:$PATH"
 if ! git pull; then
     log "WARNING: Git pull failed, continuing with current state"
 fi
@@ -164,7 +164,7 @@ Keep documentation BRIEF (2-5 min max):
    - One-line "Current Run" status
    - Refresh "Planned Next" (3 tasks)
    - Update timestamp
-3. Commit: \`git add journal/\*.md state/queue-manual.md && git commit -m "docs: session updates" && git push\`
+3. Commit: \`git-safe-commit journal/<today>/*.md state/queue-manual.md -m "docs: session updates" && git push\`
 4. Use \`complete\` tool when finished
 
 Begin your autonomous work session now.

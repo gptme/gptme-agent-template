@@ -39,6 +39,9 @@ if [ -f ~/.profile ]; then
     source ~/.profile 2>/dev/null || true
 fi
 
+# Ensure bin/ is on PATH after profile sourcing so it survives any profile PATH reset
+export PATH="$WORKSPACE/bin:$PATH"
+
 cd "$WORKSPACE"
 
 log() {
@@ -114,13 +117,14 @@ If all active tasks are blocked, look for self-improvement work:
 ### Step 3: Execute
 Work on the selected task:
 - Make real, meaningful progress (commits, PRs, code changes)
-- Follow the git workflow: conventional commits, respect pre-commit hooks
+- Follow the git workflow: conventional commits, explicit file paths, \`git-safe-commit\` (in \`bin/\`) when committing
 - Update task state when done
 - Log progress in the journal (append-only)
 
 ## Rules
 - You have ~50 minutes. Focus on shipping, not perfecting.
 - Commit early and often. Small, well-described commits.
+- Commit with explicit paths via \`git-safe-commit file1 file2 -m \"...\"\` — never \`git add .\` or \`git commit -a\`
 - Push commits to origin before ending the session.
 - If stuck on something for more than 10 minutes, move on.
 - Don't ask questions — make reasonable decisions and document them.
