@@ -1,0 +1,44 @@
+# Root structure allowlist for gptme-agent-template
+# This file lists all top-level entries (files and directories) that are allowed in the repo root.
+# Any other entries will be rejected by the pre-commit validator.
+#
+# Rationale: Agent templates should be lean. Directories are scoped for identity files,
+# configuration, tooling, and the submodule. Use existing patterns — don't add new top-level dirs.
+
+allowed:
+  # Configuration files
+  - .gitignore
+  - .gitmodules
+  - .pre-commit-config.yaml
+  - gptme.toml
+  - root-structure-allowlist.yaml
+
+  # Identity and documentation (auto-included via gptme.toml)
+  - ABOUT.md
+  - AGENTS.md
+  - ARCHITECTURE.md
+  - CLAUDE.md
+  - SOUL.md
+  - TASKS.md
+  - TOOLS.md
+  - WORKFLOW.md
+
+  # Build and maintenance
+  - Makefile
+  - README.md
+
+  # Core directories (do not add more top-level dirs without design discussion)
+  - .github
+  - bin
+  - dotfiles
+  - gptme-contrib
+  - journal
+  - knowledge
+  - lessons
+  - people
+  - projects
+  - scripts
+  - skills
+  - state
+  - tasks
+  - tests
