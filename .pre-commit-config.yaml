@@ -32,7 +32,8 @@ repos:
         name: Validate root directory structure
         description: Ensures no new top-level files or directories are added without updating root-structure-allowlist.yaml
         entry: python3 ./scripts/precommit/validators/validate_root_structure_yaml.py
-        language: system
+        language: python
+        additional_dependencies: [pyyaml]
         pass_filenames: false
         always_run: true
       - id: check-names
