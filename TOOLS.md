@@ -5,9 +5,13 @@ Tools available in the workspace for managing tasks, searching, and operating au
 ## Task Management
 
 ```bash
-# View task status
+# View task status (overview — includes blocked/waiting tasks)
 gptodo status              # All tasks
 gptodo status --compact    # Active only
+
+# Select unblocked work (use this instead of scanning status)
+gptodo ready                         # Unblocked backlog/todo/active
+gptodo ready --skip-claimed --jsonl  # Concurrent sessions: hide already-claimed tasks
 
 # View specific task
 gptodo show <task-id>
@@ -111,7 +115,7 @@ python3 ./scripts/migrate-journals.py
 ### Starting a session
 1. Read identity files (ABOUT.md, ARCHITECTURE.md, TASKS.md)
 2. Run `./scripts/context.sh` for dynamic context
-3. Check `gptodo status --compact` for active work
+3. Check `gptodo ready --skip-claimed --jsonl` for unblocked work
 4. Start working
 
 ### Committing changes

@@ -24,10 +24,15 @@ uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages
 **Commands**:
 
 ```sh
-# View task status
+# View task status (overview — includes blocked/waiting tasks)
 gptodo status              # Show all tasks
 gptodo status --compact    # Show only new/active
 gptodo status --type tasks # Show specific type
+
+# Select unblocked work (use this instead of scanning `gptodo status`)
+gptodo ready                         # Unblocked backlog/todo/active
+gptodo ready --state todo --jsonl    # One state, one JSON object per line
+gptodo ready --skip-claimed --jsonl  # Concurrent sessions: hide already-claimed tasks
 
 # List tasks
 gptodo list               # List all tasks
@@ -37,6 +42,16 @@ gptodo list --sort date   # Sort by date
 # Show task details
 gptodo show <task-id>     # Show specific task
 ```
+
+### Selecting work (`gptodo ready`)
+
+`gptodo status` is an overview of everything, including blocked and waiting tasks. Concurrent sessions that pick from status will converge on the same blocked work.
+
+`gptodo ready` is the selector: it lists tasks that are genuinely unblocked (no unresolved `depends`, no `waiting_for` blocker). `--state backlog|todo|active|ready_for_review` narrows the pool; `--jsonl` is the machine-readable form for autonomous runners.
+
+For concurrent sessions, add `--skip-claimed`. It hides tasks already held by another coordination session (`state/coordination/coord.db`, keys like `cascade:task:<id>`). If that DB is absent — a typical fresh fork — the flag degrades silently and you still get the unblocked set.
+
+`--skip-claimed` shipped in [gptme-contrib#1510](https://github.com/gptme/gptme-contrib/pull/1510) (2026-08-25). Re-install gptodo from gptme-contrib if `gptodo ready --help` does not list the flag.
 
 ### Task Metadata Updates
 
