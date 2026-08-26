@@ -45,9 +45,6 @@ AGENT_SPECIFIC_SCRIPTS = {
     # Autonomous run scripts (agent-customized copies of the run loop infrastructure)
     "autonomous-run.sh",
     "autonomous-run-cc.sh",
-    # Root structure validator: reads root-structure-allowlist.yaml, which is
-    # agent-specific. Candidates for contrib once the allowlist protocol stabilises.
-    "validate_root_structure_yaml.py",
 }
 
 SKIP_DIRS = {".git", "__pycache__", ".venv", ".mypy_cache", "node_modules"}

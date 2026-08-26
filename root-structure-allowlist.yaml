@@ -5,7 +5,7 @@
 # Rationale: Agent templates should be lean. Directories are scoped for identity files,
 # configuration, tooling, and the submodule. Use existing patterns — don't add new top-level dirs.
 
-allowed:
+allowed_entries:
   # Configuration files
   - .gitignore
   - .gitmodules
