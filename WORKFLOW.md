@@ -81,8 +81,7 @@ Try these tiers in order until you find actionable work:
 Inspect a candidate. Skip anything with `waiting_for` still set.
 
 ### Tier 2 — Backlog candidates
-`gptodo ready --state todo --skip-claimed --jsonl`,
-`gptodo ready --state new --skip-claimed --jsonl` (legacy alias for todo), then
+`gptodo ready --state todo --skip-claimed --jsonl`, then
 `gptodo ready --state backlog --skip-claimed --jsonl`.
 Prefer small, self-contained work completable in one session.
 
