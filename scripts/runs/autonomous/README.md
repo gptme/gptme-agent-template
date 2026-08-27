@@ -220,6 +220,11 @@ Supported generic triggers:
   files/directories are older than `SESSION_GATE_STALE_WORK_MINUTES`.
 - `SESSION_GATE_MIN_INTERVAL_MINUTES` and `SESSION_GATE_MAX_INTERVAL_HOURS`
   provide usage pacing even when other triggers are quiet.
+- `blocked_until` (ISO datetime in `state/session-gate.json`) sets a maintenance
+  window: the gate skips runs until that time unless an explicit inbox, GitHub,
+  or stale-work trigger fires. Note that `blocked_until` takes precedence over
+  the `max_interval_hours` safety net — a sufficiently long maintenance window
+  can delay the scheduled "run at least every N hours" guard.
 
 ### Add Pre-Run Checks
 Add validation scripts before `gptme` execution:
