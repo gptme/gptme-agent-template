@@ -95,3 +95,40 @@ def test_max_interval_triggers(tmp_path: Path) -> None:
     assert exit_code == session_gate.RUN
     state = json.loads((tmp_path / "state" / "session-gate.json").read_text())
     assert state["last_reasons"] == ["max-interval"]
+
+
+def test_blocked_until_suppresses_run_without_triggers(tmp_path: Path) -> None:
+    """blocked_until blocks runs when no explicit trigger fires — even at max-interval."""
+    future = (datetime.now(UTC) + timedelta(hours=4)).isoformat()
+    write_state(
+        tmp_path,
+        # would normally trigger max-interval
+        last_allowed_at=(datetime.now(UTC) - timedelta(hours=25)).isoformat(),
+        blocked_until=future,
+    )
+
+    exit_code = run_gate(tmp_path, "--max-interval-hours", "24")
+
+    assert exit_code == session_gate.SKIP
+    state = json.loads((tmp_path / "state" / "session-gate.json").read_text())
+    assert state["last_decision"] == "skip"
+    assert "blocked-until" in state["last_reasons"]
+
+
+def test_blocked_until_does_not_suppress_explicit_trigger(tmp_path: Path) -> None:
+    """An inbox trigger overrides blocked_until — explicit work beats maintenance window."""
+    future = (datetime.now(UTC) + timedelta(hours=4)).isoformat()
+    write_state(
+        tmp_path,
+        last_allowed_at=datetime.now(UTC).isoformat(),
+        blocked_until=future,
+    )
+    inbox = tmp_path / "messages" / "inbox"
+    inbox.mkdir(parents=True)
+    (inbox / "urgent.md").write_text("---\nneeds_reply: true\n---\n")
+
+    exit_code = run_gate(tmp_path)
+
+    assert exit_code == session_gate.RUN
+    state = json.loads((tmp_path / "state" / "session-gate.json").read_text())
+    assert state["last_decision"] == "run"
