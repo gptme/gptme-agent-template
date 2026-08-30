@@ -76,12 +76,14 @@ are handled by dedicated services. Do NOT treat them as a work queue.
 Try these tiers in order until you find actionable work:
 
 ### Tier 1 — Active tasks
-Run `gptodo status --compact`. If a task is `active` or `ready_for_review`,
-inspect it. Skip tasks with `waiting_for` set.
+`gptodo ready --state active --skip-claimed --jsonl` and
+`gptodo ready --state ready_for_review --skip-claimed --jsonl`.
+Inspect a candidate. Skip anything with `waiting_for` still set.
 
 ### Tier 2 — Backlog candidates
-`gptodo ready --state backlog --jsonl`. Prefer small, self-contained work
-completable in one session.
+`gptodo ready --state todo --skip-claimed --jsonl`, then
+`gptodo ready --state backlog --skip-claimed --jsonl`.
+Prefer small, self-contained work completable in one session.
 
 ### Tier 3 — Self-improvement work
 If all tasks are blocked, do productive internal work. Pick from this list

@@ -121,7 +121,7 @@ $SCRIPT_DIR/context-notifications.sh  # Your custom script
 
 ## Task Management: gptodo (Optional)
 
-**Purpose**: CLI for task management (status, list, edit operations).
+**Purpose**: CLI for task management (status, ready, list, edit operations).
 
 **Installation**:
 ```bash
@@ -130,11 +130,15 @@ uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages
 
 **Common commands**:
 ```bash
-# View task status
+# View task status (overview — includes blocked/waiting tasks)
 gptodo status
 
 # Compact view (for context)
 gptodo status --compact
+
+# Select unblocked work (use this instead of scanning status)
+gptodo ready
+gptodo ready --skip-claimed --jsonl
 
 # List all tasks
 gptodo list
