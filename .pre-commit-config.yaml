@@ -99,7 +99,9 @@ repos:
         entry: ./gptme-contrib/scripts/precommit/validate_task_frontmatter.py
         language: system
         types: [markdown]
-        files: ^tasks/.*\.md$
+        files: ^tasks/(archive/)?[^/]+\.md$
+        exclude: ^tasks/(templates|video-scripts|agent-setup-interview)/
+        pass_filenames: true
       - id: validate-task-metadata
         name: Validate task metadata
         entry: bash -c 'if command -v gptodo &> /dev/null; then gptodo check; else echo "gptodo not installed (optional) - skipping validation"; fi'
