@@ -78,7 +78,38 @@ gptme "hello"
 
 The agent's context is automatically loaded via `gptme.toml` which configures the files and context command to include.
 
-### Claude Code Backend
+### One Agent, Multiple Runtimes
+
+**Your agent is the workspace, not the harness.** Identity, memory, tasks,
+lessons, journal, workflow, and audit history live in this version-controlled
+repository. A harness is one runtime that can operate on that durable state.
+
+Keep these layers separate when configuring or comparing an agent:
+
+| Layer | What it owns | Examples |
+|-------|--------------|----------|
+| **Agent workspace** | Identity, memory, tasks, journal, lessons, workflow | This repository |
+| **Harness / runtime** | Agent loop, tools, context loading, permissions | gptme, Claude Code, Codex, Grok Build |
+| **Model / provider** | The model that reasons and generates output | GPT, Claude, Grok, Gemini, DeepSeek, local models |
+| **Access / billing** | How inference is authenticated and paid for | API keys, local inference, managed services, compatible subscriptions |
+
+These layers are orthogonal, but they are not a full Cartesian product: each
+harness supports a different set of models and access methods. The table below
+states exactly what this template ships and where an external adapter is still
+required.
+
+| Runtime | This template | Context contract |
+|---------|---------------|------------------|
+| **gptme** | Native / first-class | Loads `gptme.toml`, runs `context_cmd`, and matches lessons automatically |
+| **Claude Code** | First-class alternative with an autonomous launcher | Uses `AGENTS.md`/`CLAUDE.md`; the launcher builds a shared system prompt |
+| **Codex** | Manual workspace compatibility; no launcher | Reads `AGENTS.md`; run `scripts/context.sh` and load bootstrap files manually |
+| **Grok Build** | Not wired; external adapter required | An adapter must inject the workspace prompt/context and preserve run state |
+| **Pi** | Not wired; experimental adapter required | Do not treat it as supported until its context, auth, and session lifecycle are smoke-tested |
+
+The compatibility level is the important claim. “Can read the repository” is
+not the same as “ships a reliable autonomous adapter.”
+
+### Shipped Alternative: Claude Code
 
 The template also supports Claude Code as an alternative backend:
 
@@ -155,7 +186,8 @@ To customize the autonomous behavior, edit the run script for your backend:
 - Two-queue system (manual + generated priorities)
 - Safety guardrails (GREEN/YELLOW/RED operation classification)
 - Session documentation and state management
-- **Multi-backend**: Supports both gptme and Claude Code backends
+- **Two shipped autonomous launchers**: gptme and Claude Code; other harnesses
+  need an adapter that preserves the same workspace contract
 
 ### Minimal Headless Alternative
 
