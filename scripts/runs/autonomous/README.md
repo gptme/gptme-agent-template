@@ -10,16 +10,21 @@ Autonomous runs enable your agent to work independently without human interventi
 - Safety guardrails and operational guidelines
 - Session documentation and state management
 
-## Backends
+## Shipped Autonomous Backends
 
-Two backends are supported:
+This template ships two autonomous launchers:
 
 | Backend | Script | Best For |
 |---------|--------|----------|
 | **gptme** | `autonomous-run.sh` | gptme-native agents, local models |
 | **Claude Code** | `autonomous-run-cc.sh` | Claude Max subscription, Claude-native tooling |
 
-Both backends use the same identity files (from `gptme.toml`) and follow the same CASCADE workflow.
+Both launchers use the same identity files (from `gptme.toml`) and follow the
+same CASCADE workflow. The workspace itself can be opened by other runtimes,
+but manual compatibility is not the same as a supported autonomous launcher.
+See the root README's [runtime compatibility
+matrix](../../../README.md#one-agent-multiple-runtimes) for Codex, Grok Build,
+and Pi status.
 
 ## Quick Start
 

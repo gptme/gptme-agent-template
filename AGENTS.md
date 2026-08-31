@@ -106,10 +106,21 @@ make typecheck   # Type checking
 - `context_cmd` runs `scripts/context.sh` for dynamic context
 - Lessons matched by keywords automatically
 
-### Claude Code / Codex
-- Only this file is auto-loaded — **manually read bootstrap files** listed above
+### Claude Code
+- `CLAUDE.md` is a git symlink to this file, not a separate copy, so Claude Code
+  loads these same instructions automatically. Do not replace the symlink with
+  a duplicated file.
+- Autonomous runs use `scripts/build-system-prompt.sh` to load the files listed
+  in `gptme.toml`; interactive runs should read the bootstrap files manually
 - Run `scripts/context.sh` at session start for dynamic context (tasks, GitHub, git status)
-- No automatic lesson injection — check `lessons/` when relevant
+- The generic template does not install automatic lesson-matching hooks
+
+### Codex and Other Runtimes
+- Codex discovers this `AGENTS.md`, but the template ships no Codex autonomous launcher
+- Manually read the bootstrap files and run `scripts/context.sh` at session start
+- No automatic lesson injection is provided; check `lessons/` when relevant
+- Grok Build and Pi are not wired by this template; using them reliably requires
+  an adapter that injects the same identity, context, and task-lifecycle contract
 
 ### Nested Claude Code Subprocesses
 
