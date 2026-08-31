@@ -107,7 +107,9 @@ make typecheck   # Type checking
 - Lessons matched by keywords automatically
 
 ### Claude Code
-- `CLAUDE.md` points to this file, so these instructions load automatically
+- `CLAUDE.md` is a git symlink to this file, not a separate copy, so Claude Code
+  loads these same instructions automatically. Do not replace the symlink with
+  a duplicated file.
 - Autonomous runs use `scripts/build-system-prompt.sh` to load the files listed
   in `gptme.toml`; interactive runs should read the bootstrap files manually
 - Run `scripts/context.sh` at session start for dynamic context (tasks, GitHub, git status)
