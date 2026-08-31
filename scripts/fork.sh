@@ -213,7 +213,7 @@ copy_file TASKS.md
 copy_file WORKFLOW.md
 copy_file gptme.toml
 copy_file .pre-commit-config.yaml
-copy_file root-structure-allowlist.yaml
+copy_file .github/root-structure-allowlist.yaml
 copy_file .gitignore
 copy_file .gitmodules
 
