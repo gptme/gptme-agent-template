@@ -70,6 +70,27 @@ cd /path/to/your/workspace
 ./scripts/runs/autonomous/autonomous-run-cc.sh
 ```
 
+### Pre-run gates (optional, from gptme-contrib)
+
+The Claude Code runner (`autonomous-run-cc.sh`) checks two gates before starting a
+session. Both live in `gptme-contrib` and **degrade gracefully** — if the contrib
+scripts aren't present (e.g. a fresh fork before `git submodule update`), the runner
+logs `not found` and runs anyway. The runner always functions; the gates only tighten it.
+
+- **Quota gate** (`gptme-contrib/scripts/quota-gate.sh`): skips the run when your Claude
+  subscription quota is near-exhausted, so scheduled runs don't burn the last of a
+  weekly budget on low-value work. Thresholds are env-tunable (`QUOTA_GATE_WEEKLY_THRESHOLD`).
+- **Session gate** (`gptme-contrib/scripts/runs/autonomous/session-gate.py`): skips when
+  there's no trigger (no inbox / GitHub / stale-work activity) and you're inside the
+  minimum interval since the last run. Exit contract: `0`=skip, `1`=run, `2`=error
+  (fails open — an error never silences a run).
+
+Bypass both with `FORCE_SESSION=1` for manual or debug runs:
+
+```bash
+FORCE_SESSION=1 ./scripts/runs/autonomous/autonomous-run-cc.sh
+```
+
 ### 4. Schedule with systemd (Linux)
 
 Create a systemd timer to run automatically:
