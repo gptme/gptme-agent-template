@@ -154,6 +154,36 @@ else
     fi
 fi
 
+# Capability tiers (what your agent will actually have at runtime)
+#
+# `check_cmd` above tells you which *binaries* are installed. The shared core
+# (see gptme-contrib/scripts/principal_notify.py and the shared-core convergence
+# arc) is written in capability *tiers* and degrades gracefully across them:
+#
+#   Tier 0  universal    filesystem + python3        — always present
+#   Tier 1  notify       out-of-band "notify my principal" (gh/pushover/telegram)
+#   Tier 2  service mgr   systemd / launchd           — scheduled autonomous runs
+#   Tier 3  multi-agent   ssh to sibling agents       — strictly optional
+#
+# The probe answers the runtime question a fresh fork needs: "which tiers does
+# *my* environment provide, and what do I lose without each?" — most sharply, it
+# flags the Tier-1 identity anti-pattern where the authenticated `gh` login *is*
+# the principal, so an out-of-band alarm would arrive authored by the person it
+# is meant to alert. It is stdlib-only and never fails this check.
+echo ""
+echo -e "${BLUE}Capability Tiers:${NC}"
+echo ""
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROBE="$SCRIPT_DIR/../gptme-contrib/scripts/capability_probe.py"
+if [[ -f "$PROBE" ]] && command -v python3 &> /dev/null; then
+    # Advisory only: never let the probe's exit code abort the dependency check.
+    python3 "$PROBE" || true
+else
+    echo -e "${YELLOW}→${NC} Capability probe not available yet"
+    echo "  (initialize the shared-core submodule to see your tier report:"
+    echo "   git submodule update --init gptme-contrib, then re-run this script)"
+fi
+
 # Summary
 echo ""
 echo -e "${BLUE}==============================${NC}"
