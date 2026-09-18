@@ -273,23 +273,31 @@ preserve user-owned state across system updates.
  - gptme-agent keeps track of tasks in [`TASKS.md`](./TASKS.md)
  - gptme-agent keeps a journal in [`./journal/`](./journal/)
  - gptme-agent keeps a knowledge base in [`./knowledge/`](./knowledge/)
-<!--people--> - gptme-agent maintains profiles of people in [`./people/`](./people/)
-<!--/people--><!--state--> - gptme-agent manages work priorities in [`./state/`](./state/) using the two-queue system (manual + generated)
-<!--/state--> - gptme-agent uses scripts in [`./scripts/`](./scripts/) for context generation, task management, and automation
+<!--people-->
+ - gptme-agent maintains profiles of people in [`./people/`](./people/)
+<!--/people-->
+<!--state-->
+ - gptme-agent manages work priorities in [`./state/`](./state/) using the two-queue system (manual + generated)
+<!--/state-->
+ - gptme-agent uses scripts in [`./scripts/`](./scripts/) for context generation, task management, and automation
  - gptme-agent can add files to [`gptme.toml`](./gptme.toml) to always include them in their context
 
 ### Key Directories
 
-<!--state-->**[`state/`](./state/)**: Work queue management
+<!--state-->
+**[`state/`](./state/)**: Work queue management
 - `queue-manual.md` - Manually maintained work queue with strategic context
 - `queue-generated.md` - Auto-generated queue from tasks and GitHub
 - See [`state/README.md`](./state/README.md) for detailed documentation
 
-<!--/state-->**[`scripts/`](./scripts/)**: Automation and utilities
+<!--/state-->
+**[`scripts/`](./scripts/)**: Automation and utilities
 - `context.sh` - Main context generation orchestrator
 - `gptodo` - Task management CLI (install from gptme-contrib)
-<!--autonomous-->- `runs/autonomous/` - Autonomous operation infrastructure
-<!--/autonomous-->- See [`scripts/README.md`](./scripts/README.md) for complete documentation
+<!--autonomous-->
+- `runs/autonomous/` - Autonomous operation infrastructure
+<!--/autonomous-->
+- See [`scripts/README.md`](./scripts/README.md) for complete documentation
 
 **[`lessons/`](./lessons/)**: Behavioral patterns and constraints
 - Prevents known failure modes through structured guidance
