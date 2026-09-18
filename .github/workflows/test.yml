@@ -62,3 +62,21 @@ jobs:
       run: |
         # The template itself should use symlinks for shared contrib scripts.
         python3 scripts/check-symlinks.py . --contrib-dir gptme-contrib
+
+  gate-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install uv
+      run: pip install uv
+
+    - name: Run gate tests
+      run: uv run --with pytest pytest tests/test_cc_gates.py -v
