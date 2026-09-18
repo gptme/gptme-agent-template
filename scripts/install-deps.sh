@@ -98,6 +98,22 @@ if ! check_cmd "gptme" "gptme" "pipx install 'gptme[server,browser,telemetry]'";
     fi
 fi
 
+# gptme-sessions: session-record writer used by the Claude Code post-session
+# Stop hook. Without it a forked agent runs blind — no noop rate, no outcome
+# tracking, no bandit input. Installed from the vendored contrib package (not
+# published to PyPI). The hook degrades gracefully if it's missing.
+if ! check_cmd "gptme-sessions" "gptme-sessions" "uv tool install ./gptme-contrib/packages/gptme-sessions"; then
+    if $INSTALL_MODE && command -v uv &> /dev/null; then
+        SESSIONS_PKG="$(dirname "$0")/../gptme-contrib/packages/gptme-sessions"
+        if [[ -d "$SESSIONS_PKG" ]]; then
+            echo -e "${YELLOW}Installing gptme-sessions from vendored contrib package...${NC}"
+            uv tool install "$SESSIONS_PKG"
+        else
+            echo -e "${YELLOW}  → gptme-contrib submodule not checked out yet; install after forking${NC}"
+        fi
+    fi
+fi
+
 # Optional but recommended
 echo ""
 echo -e "${BLUE}Recommended Dependencies:${NC}"

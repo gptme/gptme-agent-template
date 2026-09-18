@@ -223,6 +223,11 @@ copy_file WORKFLOW.md
 # gptme.toml, but Claude Code only auto-loads AGENTS.md). Claude Code reads
 # AGENTS.md natively as of 2.1.277; no CLAUDE.md symlink is needed.
 copy_file AGENTS.md
+# Claude Code hook config: registers the lesson-matcher (UserPromptSubmit/PreToolUse)
+# and the post-session record writer (Stop) so a fork is observable and lesson-aware
+# by default. .claude/hooks/match-lessons.py is a symlink into gptme-contrib; cp -r
+# preserves it.
+copy_file .claude
 copy_file gptme.toml
 copy_file .pre-commit-config.yaml
 copy_file .github/root-structure-allowlist.yaml

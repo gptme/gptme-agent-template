@@ -42,6 +42,12 @@ fi
 # Ensure scripts/ is on PATH after profile sourcing so it survives any profile PATH reset
 export PATH="$WORKSPACE/scripts:$PATH"
 
+# Pin the session store to this workspace so the post-session Stop hook and any
+# bare `gptme-sessions` CLI call resolve to the same place (state/sessions),
+# rather than the empty per-user default. Without this a fork silently splits
+# its records. See .claude/hooks/post-session.py.
+export GPTME_SESSIONS_DIR="$WORKSPACE/state/sessions"
+
 cd "$WORKSPACE"
 
 log() {
@@ -131,6 +137,11 @@ Work on the selected task:
 - Use absolute paths for all file operations."
 
 log "Starting Claude Code session..."
+
+# Record the starting commit so the post-session hook can attribute what this
+# session actually shipped (start_commit → end_commit).
+export START_COMMIT
+START_COMMIT="$(git rev-parse HEAD 2>/dev/null || true)"
 
 # Unset nested-session protection vars
 unset CLAUDECODE 2>/dev/null || true
