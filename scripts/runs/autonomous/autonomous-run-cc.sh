@@ -138,13 +138,16 @@ unset CLAUDE_CODE_ENTRYPOINT 2>/dev/null || true
 
 # Run Claude Code
 # IMPORTANT: </dev/null prevents SIGSTOP in non-interactive contexts (tmux, systemd)
+# Capture the exit code with `|| EXIT_CODE=$?` so `set -e` does not abort the script
+# on a non-zero exit (timeout=124, or claude erroring). Without this guard the
+# timeout branch and the git-push safety net below are unreachable on exactly the
+# failing runs we most want them to handle.
+EXIT_CODE=0
 timeout "$SCRIPT_TIMEOUT" claude -p \
     --dangerously-skip-permissions \
     --model "$MODEL" \
     --append-system-prompt-file "$SYSPROMPT_FILE" \
-    "$PROMPT" </dev/null
-
-EXIT_CODE=$?
+    "$PROMPT" </dev/null || EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 124 ]; then
     log "Session timed out after ${SCRIPT_TIMEOUT}s"

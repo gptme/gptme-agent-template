@@ -28,8 +28,8 @@ Examples:
 
     args = parser.parse_args()
 
-    # Get the fork.sh script path
-    script_dir = Path(__file__).parent.parent
+    # Get the fork.sh script path (same directory as this wrapper)
+    script_dir = Path(__file__).parent
     fork_script = script_dir / "fork.sh"
 
     if not fork_script.exists():
