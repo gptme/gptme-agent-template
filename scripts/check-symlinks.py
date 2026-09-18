@@ -50,13 +50,22 @@ AGENT_SPECIFIC_SCRIPTS = {
 SKIP_DIRS = {".git", "__pycache__", ".venv", ".mypy_cache", "node_modules"}
 
 
-def hash_file(path: Path) -> str:
-    """Compute SHA-256 hash of file contents."""
+def hash_file(path: Path) -> str | None:
+    """Compute SHA-256 hash of file contents, or None if trivial (whitespace-only).
+
+    Combines the trivial check with hashing in a single read so callers never
+    load the same file twice.  Package markers like an empty ``__init__.py``
+    carry no shareable logic and produce bogus hash matches, so they are
+    excluded by returning None.
+    """
     h = hashlib.sha256()
+    has_content = False
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(65536), b""):
             h.update(chunk)
-    return h.hexdigest()
+            if not has_content and chunk.strip():
+                has_content = True
+    return h.hexdigest() if has_content else None
 
 
 def is_script_file(path: Path) -> bool:
@@ -66,21 +75,6 @@ def is_script_file(path: Path) -> bool:
         or path.name.endswith(".py")
         or os.access(path, os.X_OK)
     )
-
-
-def is_trivial(path: Path) -> bool:
-    """True if the file has no meaningful content (empty or whitespace-only).
-
-    Package markers like an empty ``__init__.py`` carry no shareable logic, yet
-    every empty file hash-matches every other empty file. Indexing them produces
-    bogus "verbatim copy, should be a symlink" reports (e.g. an agent's
-    ``scripts/lib/__init__.py`` matching a contrib package's ``tests/__init__.py``).
-    Excluding them keeps default-mode output trustworthy for established agents.
-    """
-    try:
-        return not path.read_bytes().strip()
-    except (OSError, PermissionError):
-        return False
 
 
 def iter_script_files(base_dir: Path, check_dirs: list[str]):
@@ -116,14 +110,14 @@ def build_contrib_index(
             fpath = root_path / fname
             if fpath.is_symlink() or not is_script_file(fpath):
                 continue
-            if is_trivial(fpath):
-                continue
             try:
                 h = hash_file(fpath)
-                hash_index[h] = fpath
-                name_index.setdefault(fname, []).append(fpath)
             except (OSError, PermissionError):
-                pass
+                continue
+            if h is None:
+                continue  # trivial/whitespace-only — skip
+            hash_index[h] = fpath
+            name_index.setdefault(fname, []).append(fpath)
 
     if verbose:
         print(
@@ -163,15 +157,14 @@ def check_mode_default(
                 print(f"  OK (symlink): {fpath.relative_to(agent_dir)} -> {target}")
             continue
 
-        if is_trivial(fpath):
-            if verbose:
-                print(f"  OK (trivial/empty): {fpath.relative_to(agent_dir)}")
-            continue
-
         rel_str = str(fpath.relative_to(agent_dir))
         try:
             h = hash_file(fpath)
         except (OSError, PermissionError):
+            continue
+        if h is None:
+            if verbose:
+                print(f"  OK (trivial/empty): {rel_str}")
             continue
 
         if h in hash_index:
