@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/match-lessons.py",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/match-lessons.py\"",
             "timeout": 10
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/match-lessons.py",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/match-lessons.py\"",
             "timeout": 10
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/post-session.py",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/post-session.py\"",
             "timeout": 30
           }
         ]

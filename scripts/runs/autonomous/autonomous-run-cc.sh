@@ -138,6 +138,10 @@ Work on the selected task:
 
 log "Starting Claude Code session..."
 
+# Identify this as an autonomous run so the Stop hook tags records correctly
+# (default in the hook is "interactive"; must be set explicitly here).
+export AGENT_SESSION_TYPE=autonomous
+
 # Record the starting commit so the post-session hook can attribute what this
 # session actually shipped (start_commit → end_commit).
 export START_COMMIT

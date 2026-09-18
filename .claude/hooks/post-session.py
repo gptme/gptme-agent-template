@@ -23,8 +23,8 @@ Environment (all optional):
                             `<workspace>/state/sessions`. The autonomous
                             runners export this so bare `gptme-sessions` CLI
                             calls resolve to the same store.
-  AGENT_SESSION_TYPE        Tag records by source: "autonomous" (default),
-                            "monitoring", "email", "interactive".
+  AGENT_SESSION_TYPE        Tag records by source: "interactive" (default),
+                            "autonomous", "monitoring", "email".
   AGENT_RECOMMENDED_CATEGORY  Category the session was launched for (bandit input).
   START_COMMIT              HEAD before the session (set by the run script);
                             end_commit is resolved from HEAD when the session stops.
@@ -32,7 +32,6 @@ Environment (all optional):
 
 from __future__ import annotations
 
-import collections
 import json
 import os
 import sys
@@ -113,7 +112,12 @@ def _import_sessions():
 
 def main() -> None:
     try:
-        hook_input = json.loads(sys.stdin.read())
+        # Check env var first so a re-exec (uv-tool fallback) can recover the
+        # payload after stdin is exhausted by the original process.
+        raw = os.environ.get("_POST_SESSION_HOOK_INPUT") or sys.stdin.read()
+        hook_input = json.loads(raw)
+        # Persist for any re-exec that follows.
+        os.environ["_POST_SESSION_HOOK_INPUT"] = raw
     except Exception:
         sys.exit(0)
 
@@ -129,7 +133,7 @@ def main() -> None:
         log(f"no transcript at {transcript_path!r}, skipping")
         sys.exit(0)
 
-    session_type = os.environ.get("AGENT_SESSION_TYPE") or "autonomous"
+    session_type = os.environ.get("AGENT_SESSION_TYPE") or "interactive"
     recommended_category = os.environ.get("AGENT_RECOMMENDED_CATEGORY") or None
 
     # Commit tracking: START_COMMIT is set by the run script before the session;
@@ -162,16 +166,9 @@ def main() -> None:
     try:
         store = SessionStore(SESSIONS_DIR)
 
-        # Dedup guard: the Stop hook can fire more than once for the same session
-        # (e.g. interrupted then resumed). Skip if session_id already recorded.
-        if store.path.exists() and session_id != "unknown":
-            with open(store.path, encoding="utf-8") as f:
-                tail = collections.deque(f, maxlen=20)
-            for line in tail:
-                if session_id in line:
-                    log(f"skipped duplicate session {session_id[:8]}")
-                    sys.exit(0)
-
+        # Always process — a later Stop event has the final transcript with
+        # accurate duration, outcome, and deliverables. Let the session store
+        # (or downstream dedup by session_id) handle overwriting earlier records.
         result = post_session(
             store=store,
             harness="claude-code",
