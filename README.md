@@ -101,16 +101,22 @@ leaves a ready-to-run workspace:
 
 `gptme-agent doctor` confirms the workspace is ready (23 checks passed, 7
 warnings, 1 error — the error is the missing `origin` remote on a fresh clone,
-which is expected until you push):
+which is expected until you create a GitHub repository, add it as `origin`
+(`git remote add origin git@github.com:YOU/my-agent.git`), and push):
 
 ```text
 Summary: 23 passed, 7 warnings, 1 errors
 ```
 
-And `gptme "hello"` loads the agent's context and completes a turn:
+And `gptme "hello"` loads the agent's context and completes a turn (output
+abridged — the assistant reply appears between the lesson header and the session
+stats):
 
 ```text
 Lessons: 4 unique lessons included (4 total matches)
+
+Hello! I'm QsTest, your AI agent. How can I help you today?
+
 · Session: $0.01 | 3 turns | 22k context | 35% cached
 Goodbye! (resume with: gptme --name autonomous-b659)
 ```
