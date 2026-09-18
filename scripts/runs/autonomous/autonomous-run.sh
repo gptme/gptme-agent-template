@@ -52,10 +52,10 @@ trap 'log "ERROR: Script failed at line $LINENO"' ERR
 # Pull latest changes from remote
 log "Pulling latest changes from git..."
 cd "$WORKSPACE"
-# Compute REPO_DIR after cd so bin/ always resolves to the workspace repo
+# Compute REPO_DIR after cd so scripts/ always resolves to the workspace repo
 REPO_DIR="$(git rev-parse --show-toplevel)"
 SCRIPT_DIR="$REPO_DIR/scripts"
-export PATH="$REPO_DIR/bin:$PATH"
+export PATH="$REPO_DIR/scripts:$PATH"
 if ! git pull; then
     log "WARNING: Git pull failed, continuing with current state"
 fi

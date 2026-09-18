@@ -28,7 +28,6 @@ allowed_entries:
 
   # Core directories (do not add more top-level dirs without design discussion)
   - .github
-  - bin
   - dotfiles
   - gptme-contrib
   - journal
