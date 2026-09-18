@@ -232,12 +232,9 @@ copy_file .gitmodules
 
 # Core scripts (context generation is always needed)
 # Copy scripts directory, then optionally remove autonomous runs
+# scripts/git-safe-commit (a symlink into gptme-contrib) is copied along with the
+# rest of scripts/; cp -r preserves it as a symlink.
 copy_file scripts
-
-# bin/ holds git-safe-commit (a symlink into gptme-contrib). The autonomous runner
-# puts bin/ on PATH and the prompt tells the agent to commit via git-safe-commit,
-# so a fork without bin/ has a broken commit path. cp -r preserves the symlink.
-copy_file bin
 
 # Remove template-specific scripts that belong in the template but not in instantiated agents:
 #   check-symlinks.py — template maintenance tool (checks for drift in the template itself)

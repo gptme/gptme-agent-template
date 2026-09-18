@@ -41,11 +41,11 @@ echo "entry" >> journal/2025-10-14/topic.md
   session's staged files.
 - **Shared-worktree commits**: Multiple concurrent sessions on one worktree will
   race prek's stash/restore. Use `git-safe-commit` (hyphenated; flock wrapper in
-  `bin/`) with explicit paths:
+  `scripts/`) with explicit paths:
   ```bash
   git-safe-commit file1.py file2.py -m "feat: description"
   ```
-  Requires `bin/` in PATH (e.g. `export PATH="$PWD/bin:$PATH"` in `.envrc`).
+  Requires `scripts/` in PATH (e.g. `export PATH="$PWD/scripts:$PATH"` in `.envrc`).
 - **PR merge strategy**: Always `--squash` when merging
 - **No AI attribution**: Never add `Co-Authored-By: Claude` or "Generated with Claude Code" to commits/PRs
 

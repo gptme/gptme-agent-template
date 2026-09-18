@@ -39,8 +39,8 @@ if [ -f ~/.profile ]; then
     source ~/.profile 2>/dev/null || true
 fi
 
-# Ensure bin/ is on PATH after profile sourcing so it survives any profile PATH reset
-export PATH="$WORKSPACE/bin:$PATH"
+# Ensure scripts/ is on PATH after profile sourcing so it survives any profile PATH reset
+export PATH="$WORKSPACE/scripts:$PATH"
 
 cd "$WORKSPACE"
 
@@ -117,7 +117,7 @@ If all active tasks are blocked, look for self-improvement work:
 ### Step 3: Execute
 Work on the selected task:
 - Make real, meaningful progress (commits, PRs, code changes)
-- Follow the git workflow: conventional commits, explicit file paths, \`git-safe-commit\` (in \`bin/\`) when committing
+- Follow the git workflow: conventional commits, explicit file paths, \`git-safe-commit\` (in \`scripts/\`) when committing
 - Update task state when done
 - Log progress in the journal (append-only)
 
