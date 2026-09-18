@@ -7,7 +7,9 @@ iso_datetime() {
 }
 
 # Default options: everything included
-WITH_DOTFILES=false
+# Dotfiles (global git hooks) default ON so a fork has git safety by default
+# rather than as an opt-in; use --no-dotfiles to skip.
+WITH_DOTFILES=true
 WITH_AUTONOMOUS=true
 WITH_PEOPLE=true
 WITH_PROJECTS=true
@@ -30,6 +32,10 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --with-dotfiles)
             WITH_DOTFILES=true
+            shift
+            ;;
+        --no-dotfiles|--without-dotfiles)
+            WITH_DOTFILES=false
             shift
             ;;
         --with-autonomous)
@@ -87,7 +93,8 @@ while [[ $# -gt 0 ]]; do
             echo "  --with-people          Include people directory (use with --minimal, any order)"
             echo "  --with-projects        Include projects directory (use with --minimal, any order)"
             echo "  --with-state           Include state/queue system (use with --minimal, any order)"
-            echo "  --with-dotfiles        Include dotfiles (global git hooks)"
+            echo "  --with-dotfiles        Include dotfiles (global git hooks) [default]"
+            echo "  --no-dotfiles          Exclude dotfiles (global git hooks)"
             echo "  --help, -h             Show this help message"
             echo ""
             echo "Examples:"
@@ -96,7 +103,7 @@ while [[ $# -gt 0 ]]; do
             echo "  $0 --minimal --with-state ./bob Bob             # Minimal + state/queues"
             echo "  $0 --minimal --with-autonomous ./bob Bob        # Minimal + autonomous runs"
             echo "  $0 --without-autonomous ./bob Bob               # No autonomous runs"
-            echo "  $0 --with-dotfiles ./bob Bob                    # Include git hooks"
+            echo "  $0 --no-dotfiles ./bob Bob                      # Skip git hooks (dotfiles on by default)"
             exit 0
             ;;
         -*)
@@ -211,6 +218,12 @@ copy_file ARCHITECTURE.md
 copy_file TOOLS.md
 copy_file TASKS.md
 copy_file WORKFLOW.md
+# Instruction files for Claude Code / AGENTS.md-aware harnesses. Without these a
+# fork boots with no auto-loaded instruction file under Claude Code (gptme reads
+# gptme.toml, but Claude Code only auto-loads AGENTS.md/CLAUDE.md). CLAUDE.md is a
+# symlink to AGENTS.md; cp -r preserves it as a symlink.
+copy_file AGENTS.md
+copy_file CLAUDE.md
 copy_file gptme.toml
 copy_file .pre-commit-config.yaml
 copy_file .github/root-structure-allowlist.yaml
@@ -220,6 +233,11 @@ copy_file .gitmodules
 # Core scripts (context generation is always needed)
 # Copy scripts directory, then optionally remove autonomous runs
 copy_file scripts
+
+# bin/ holds git-safe-commit (a symlink into gptme-contrib). The autonomous runner
+# puts bin/ on PATH and the prompt tells the agent to commit via git-safe-commit,
+# so a fork without bin/ has a broken commit path. cp -r preserves the symlink.
+copy_file bin
 
 # Remove template-specific scripts that belong in the template but not in instantiated agents:
 #   check-symlinks.py — template maintenance tool (checks for drift in the template itself)

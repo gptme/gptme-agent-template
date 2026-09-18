@@ -25,11 +25,27 @@ Examples:
     parser.add_argument(
         "agent_name", nargs="?", help="Name of the new agent (optional)"
     )
+    dotfiles_group = parser.add_mutually_exclusive_group()
+    dotfiles_group.add_argument(
+        "--dotfiles",
+        "--with-dotfiles",
+        dest="dotfiles",
+        action="store_true",
+        default=True,
+        help="Include dotfiles / global git hooks (default)",
+    )
+    dotfiles_group.add_argument(
+        "--no-dotfiles",
+        "--without-dotfiles",
+        dest="dotfiles",
+        action="store_false",
+        help="Exclude dotfiles / global git hooks",
+    )
 
     args = parser.parse_args()
 
-    # Get the fork.sh script path
-    script_dir = Path(__file__).parent.parent
+    # Get the fork.sh script path (same directory as this wrapper)
+    script_dir = Path(__file__).parent
     fork_script = script_dir / "fork.sh"
 
     if not fork_script.exists():
@@ -37,7 +53,10 @@ Examples:
         return 1
 
     # Build command
-    cmd = [str(fork_script), args.target_dir]
+    cmd = [str(fork_script)]
+    if not args.dotfiles:
+        cmd.append("--no-dotfiles")
+    cmd.append(args.target_dir)
     if args.agent_name:
         cmd.append(args.agent_name)
 
