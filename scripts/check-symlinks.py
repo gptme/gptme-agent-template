@@ -68,6 +68,21 @@ def is_script_file(path: Path) -> bool:
     )
 
 
+def is_trivial(path: Path) -> bool:
+    """True if the file has no meaningful content (empty or whitespace-only).
+
+    Package markers like an empty ``__init__.py`` carry no shareable logic, yet
+    every empty file hash-matches every other empty file. Indexing them produces
+    bogus "verbatim copy, should be a symlink" reports (e.g. an agent's
+    ``scripts/lib/__init__.py`` matching a contrib package's ``tests/__init__.py``).
+    Excluding them keeps default-mode output trustworthy for established agents.
+    """
+    try:
+        return not path.read_bytes().strip()
+    except (OSError, PermissionError):
+        return False
+
+
 def iter_script_files(base_dir: Path, check_dirs: list[str]):
     """Yield (fpath, is_symlink) for all script files under check_dirs."""
     for check_dir_name in check_dirs:
@@ -100,6 +115,8 @@ def build_contrib_index(
         for fname in files:
             fpath = root_path / fname
             if fpath.is_symlink() or not is_script_file(fpath):
+                continue
+            if is_trivial(fpath):
                 continue
             try:
                 h = hash_file(fpath)
@@ -144,6 +161,11 @@ def check_mode_default(
             if verbose:
                 target = os.readlink(fpath)
                 print(f"  OK (symlink): {fpath.relative_to(agent_dir)} -> {target}")
+            continue
+
+        if is_trivial(fpath):
+            if verbose:
+                print(f"  OK (trivial/empty): {fpath.relative_to(agent_dir)}")
             continue
 
         rel_str = str(fpath.relative_to(agent_dir))
