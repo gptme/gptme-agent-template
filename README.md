@@ -146,7 +146,7 @@ required.
 | Runtime | This template | Context contract |
 |---------|---------------|------------------|
 | **gptme** | Native / first-class | Loads `gptme.toml`, runs `context_cmd`, and matches lessons automatically |
-| **Claude Code** | First-class alternative with an autonomous launcher | Uses `AGENTS.md`/`CLAUDE.md`; the launcher builds a shared system prompt |
+| **Claude Code** | First-class alternative with an autonomous launcher | Reads `AGENTS.md` natively (2.1.277+); the launcher builds a shared system prompt |
 | **Codex** | Manual workspace compatibility; no launcher | Reads `AGENTS.md`; run `scripts/context.sh` and load bootstrap files manually |
 | **Grok Build** | Not wired; external adapter required | An adapter must inject the workspace prompt/context and preserve run state |
 | **Pi** | Not wired; experimental adapter required | Do not treat it as supported until its context, auth, and session lifecycle are smoke-tested |

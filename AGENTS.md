@@ -107,9 +107,9 @@ make typecheck   # Type checking
 - Lessons matched by keywords automatically
 
 ### Claude Code
-- `CLAUDE.md` is a git symlink to this file, not a separate copy, so Claude Code
-  loads these same instructions automatically. Do not replace the symlink with
-  a duplicated file.
+- Claude Code reads this file natively (2.1.277+) in a project with no
+  `CLAUDE.md`, so no symlink or duplicate copy is needed. Requires a git
+  project root, and is unavailable on Bedrock, Vertex and Foundry.
 - Autonomous runs use `scripts/build-system-prompt.sh` to load the files listed
   in `gptme.toml`; interactive runs should read the bootstrap files manually
 - Run `scripts/context.sh` at session start for dynamic context (tasks, GitHub, git status)

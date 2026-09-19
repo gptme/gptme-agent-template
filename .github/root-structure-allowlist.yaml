@@ -16,7 +16,6 @@ allowed_entries:
   - ABOUT.md
   - AGENTS.md
   - ARCHITECTURE.md
-  - CLAUDE.md
   - SOUL.md
   - TASKS.md
   - TOOLS.md

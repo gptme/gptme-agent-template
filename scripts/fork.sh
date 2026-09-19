@@ -218,12 +218,11 @@ copy_file ARCHITECTURE.md
 copy_file TOOLS.md
 copy_file TASKS.md
 copy_file WORKFLOW.md
-# Instruction files for Claude Code / AGENTS.md-aware harnesses. Without these a
+# Instruction file for Claude Code / AGENTS.md-aware harnesses. Without it a
 # fork boots with no auto-loaded instruction file under Claude Code (gptme reads
-# gptme.toml, but Claude Code only auto-loads AGENTS.md/CLAUDE.md). CLAUDE.md is a
-# symlink to AGENTS.md; cp -r preserves it as a symlink.
+# gptme.toml, but Claude Code only auto-loads AGENTS.md). Claude Code reads
+# AGENTS.md natively as of 2.1.277; no CLAUDE.md symlink is needed.
 copy_file AGENTS.md
-copy_file CLAUDE.md
 copy_file gptme.toml
 copy_file .pre-commit-config.yaml
 copy_file .github/root-structure-allowlist.yaml
