@@ -75,6 +75,47 @@ acquire_lock
 
 log "=== $AGENT_NAME autonomous run starting (backend: claude-code, model: $MODEL) ==="
 
+# --- Pre-run gates (from gptme-contrib) ---
+# Two gates decide whether this scheduled run should proceed. Both live in
+# gptme-contrib and degrade gracefully when absent: a fresh fork with no contrib
+# checkout still runs (Tier 0 — the runner always functions, gates only tighten it).
+# Set FORCE_SESSION=1 to bypass both (manual/debug runs).
+CONTRIB_DIR="$WORKSPACE/gptme-contrib/scripts"
+if [ "${FORCE_SESSION:-0}" != "1" ]; then
+    # Quota gate: skip when the Claude subscription quota is near-exhausted, so
+    # scheduled runs don't burn the last of a weekly budget on low-value work.
+    QUOTA_GATE_SCRIPT="$CONTRIB_DIR/quota-gate.sh"
+    if [ -f "$QUOTA_GATE_SCRIPT" ]; then
+        # `source` is a special builtin, so these prefixed assignments persist
+        # for the later quota_gate_check call (matches gptme's autonomous-run.sh).
+        # shellcheck source=/dev/null
+        QUOTA_GATE_LOG_PREFIX="[${AGENT_NAME,,}-autonomous]" \
+        source "$QUOTA_GATE_SCRIPT"
+        if ! quota_gate_check --model "$MODEL"; then
+            log "Quota gate blocked session — exiting cleanly"
+            exit 0
+        fi
+    else
+        log "quota-gate.sh not found — skipping quota gate"
+    fi
+
+    # Session gate: skip when there's no trigger (no inbox/GitHub/stale-work
+    # activity) and we're inside the min interval. Exit contract: 0=skip, 1=run,
+    # 2=gate error. Fail open — an error must not silence a run.
+    SESSION_GATE_SCRIPT="$CONTRIB_DIR/runs/autonomous/session-gate.py"
+    if [ -f "$SESSION_GATE_SCRIPT" ]; then
+        GATE_RC=0
+        python3 "$SESSION_GATE_SCRIPT" --workspace "$WORKSPACE" || GATE_RC=$?
+        case "$GATE_RC" in
+            0) log "Session gate: no trigger — exiting cleanly"; exit 0 ;;
+            2) log "Session gate errored (rc=2) — failing open, running anyway" ;;
+            *) ;;  # rc=1: a trigger fired, proceed
+        esac
+    else
+        log "session-gate.py not found — skipping session gate"
+    fi
+fi
+
 # --- Git pull ---
 log "Pulling latest changes..."
 git pull --rebase --autostash 2>&1 || {
