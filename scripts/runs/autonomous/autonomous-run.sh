@@ -40,14 +40,54 @@ cleanup() {
     pkill -P $$ gptme 2>/dev/null || true
     # shellcheck disable=SC2317  # Called by trap, not directly
     sleep 1
-    # Clean up temporary prompt file
+    # Clean up temporary prompt file. Guard the unset case so an early skip
+    # (session gate, before PROMPT_FILE is assigned) still exits 0 under set -e.
     # shellcheck disable=SC2317  # Called by trap, not directly
-    [ -f "$PROMPT_FILE" ] && rm -f "$PROMPT_FILE"
+    if [ -n "${PROMPT_FILE:-}" ] && [ -f "$PROMPT_FILE" ]; then
+        rm -f "$PROMPT_FILE"
+    fi
 }
 
 # Ensure cleanup on exit
 trap cleanup EXIT
 trap 'log "ERROR: Script failed at line $LINENO"' ERR
+
+# Detect scheduled vs manual before any gate. systemd sets INVOCATION_ID on
+# service processes; a direct terminal run does not. Identify the invocation
+# here so a TTY/manual run skips the session gate instead of no-op'ing the
+# README "Test Manually" path. RUN_TYPE also feeds the gptme prompt later.
+if [ -n "${INVOCATION_ID:-}" ]; then
+    RUN_TYPE="Scheduled (systemd)"
+else
+    RUN_TYPE="Manual"
+fi
+
+# --- Pre-run session gate (from gptme-contrib) ---
+# Skip quiet scheduled runs when there's no trigger. Lives in gptme-contrib and
+# degrades gracefully when absent: a fresh fork with no contrib checkout still
+# runs. Quota gate is intentionally not wired here — it is a Claude-subscription
+# check, and this gptme runner is the failover when that subscription is exhausted.
+# Bypass: FORCE_SESSION=1, or a TTY stdin (direct manual run). Scheduled
+# systemd/cron invocations have no TTY and still go through the gate.
+CONTRIB_DIR="$WORKSPACE/gptme-contrib/scripts"
+if [ "${FORCE_SESSION:-0}" = "1" ]; then
+    log "FORCE_SESSION=1 — skipping session gate"
+elif [ -t 0 ]; then
+    log "Manual run (TTY stdin) — skipping session gate"
+else
+    SESSION_GATE_SCRIPT="$CONTRIB_DIR/runs/autonomous/session-gate.py"
+    if [ -f "$SESSION_GATE_SCRIPT" ]; then
+        GATE_RC=0
+        python3 "$SESSION_GATE_SCRIPT" --workspace "$WORKSPACE" || GATE_RC=$?
+        case "$GATE_RC" in
+            0) log "Session gate: no trigger — exiting cleanly"; exit 0 ;;
+            2) log "Session gate errored (rc=2) — failing open, running anyway" ;;
+            *) ;;  # rc=1: a trigger fired, proceed
+        esac
+    else
+        log "session-gate.py not found — skipping session gate"
+    fi
+fi
 
 # Pull latest changes from remote
 log "Pulling latest changes from git..."
@@ -71,13 +111,7 @@ export GPTME_CHAT_HISTORY=true
 
 log "Starting autonomous run (timeout: ${SCRIPT_TIMEOUT}s / 50 minutes)..."
 log "Workspace: $WORKSPACE"
-
-# Detect if this is a scheduled run or manual trigger
-if [ -n "$INVOCATION_ID" ]; then
-    RUN_TYPE="Scheduled (systemd)"
-else
-    RUN_TYPE="Manual"
-fi
+log "Run type: $RUN_TYPE"
 
 # Queue file paths (customize queue system as needed)
 # shellcheck disable=SC2034  # Template placeholders for agent customization

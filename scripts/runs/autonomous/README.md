@@ -63,31 +63,41 @@ Run the script directly to verify it works:
 ```bash
 cd /path/to/your/workspace
 
-# gptme backend
+# gptme backend — a terminal run (TTY stdin) skips the session gate
 ./scripts/runs/autonomous/autonomous-run.sh
 
-# Claude Code backend
-./scripts/runs/autonomous/autonomous-run-cc.sh
+# Claude Code backend — set FORCE_SESSION=1 so a quiet interval cannot no-op
+FORCE_SESSION=1 ./scripts/runs/autonomous/autonomous-run-cc.sh
 ```
+
+The gptme runner identifies the invocation as manual *before* the session gate:
+a TTY stdin (this command) starts gptme even when the gate would skip. Scheduled
+systemd/cron runs have no TTY and still go through the gate. From a non-TTY
+context (scripts, CI), set `FORCE_SESSION=1`.
 
 ### Pre-run gates (optional, from gptme-contrib)
 
-The Claude Code runner (`autonomous-run-cc.sh`) checks two gates before starting a
-session. Both live in `gptme-contrib` and **degrade gracefully** — if the contrib
-scripts aren't present (e.g. a fresh fork before `git submodule update`), the runner
-logs `not found` and runs anyway. The runner always functions; the gates only tighten it.
+Both runners check a **session gate** before starting a scheduled session. The
+Claude Code runner also checks a **quota gate**. Both live in `gptme-contrib`
+and **degrade gracefully** — if the contrib scripts aren't present (e.g. a fresh
+fork before `git submodule update`), the runner logs `not found` and runs anyway.
+The runner always functions; the gates only tighten it.
 
-- **Quota gate** (`gptme-contrib/scripts/quota-gate.sh`): skips the run when your Claude
-  subscription quota is near-exhausted, so scheduled runs don't burn the last of a
-  weekly budget on low-value work. Thresholds are env-tunable (`QUOTA_GATE_WEEKLY_THRESHOLD`).
-- **Session gate** (`gptme-contrib/scripts/runs/autonomous/session-gate.py`): skips when
-  there's no trigger (no inbox / GitHub / stale-work activity) and you're inside the
-  minimum interval since the last run. Exit contract: `0`=skip, `1`=run, `2`=error
+- **Session gate** (`gptme-contrib/scripts/runs/autonomous/session-gate.py`): used
+  by both `autonomous-run.sh` and `autonomous-run-cc.sh`. Skips when there's no
+  trigger (no inbox / GitHub / stale-work activity) and you're inside the minimum
+  interval since the last run. Exit contract: `0`=skip, `1`=run, `2`=error
   (fails open — an error never silences a run).
+- **Quota gate** (`gptme-contrib/scripts/quota-gate.sh`): Claude Code runner only.
+  Skips when your Claude subscription quota is near-exhausted. Not wired into the
+  gptme runner — that runner is the failover when the Claude subscription is
+  exhausted. Thresholds are env-tunable (`QUOTA_GATE_WEEKLY_THRESHOLD`).
 
-Bypass both with `FORCE_SESSION=1` for manual or debug runs:
+Bypass with `FORCE_SESSION=1` for non-TTY manual or debug runs (the gptme
+runner also skips the gate on TTY stdin — see Test Manually above):
 
 ```bash
+FORCE_SESSION=1 ./scripts/runs/autonomous/autonomous-run.sh
 FORCE_SESSION=1 ./scripts/runs/autonomous/autonomous-run-cc.sh
 ```
 
@@ -226,6 +236,7 @@ fi
 ## Troubleshooting
 
 ### Script Exits Immediately
+- A quiet scheduled run can skip via the session gate (log: `no trigger`). That's intentional. Run from a terminal, or set `FORCE_SESSION=1`.
 - Check that `WORKSPACE` path exists
 - Verify `gptme` is installed and in PATH
 - Review logs for error messages

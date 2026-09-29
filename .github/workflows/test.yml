@@ -79,4 +79,4 @@ jobs:
       run: pip install uv
 
     - name: Run gate tests
-      run: uv run --with pytest pytest tests/test_cc_gates.py -v
+      run: uv run --with pytest pytest tests/test_cc_gates.py tests/test_gptme_gates.py -v
