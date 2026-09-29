@@ -52,14 +52,29 @@ cleanup() {
 trap cleanup EXIT
 trap 'log "ERROR: Script failed at line $LINENO"' ERR
 
+# Detect scheduled vs manual before any gate. systemd sets INVOCATION_ID on
+# service processes; a direct terminal run does not. Identify the invocation
+# here so a TTY/manual run skips the session gate instead of no-op'ing the
+# README "Test Manually" path. RUN_TYPE also feeds the gptme prompt later.
+if [ -n "${INVOCATION_ID:-}" ]; then
+    RUN_TYPE="Scheduled (systemd)"
+else
+    RUN_TYPE="Manual"
+fi
+
 # --- Pre-run session gate (from gptme-contrib) ---
 # Skip quiet scheduled runs when there's no trigger. Lives in gptme-contrib and
 # degrades gracefully when absent: a fresh fork with no contrib checkout still
 # runs. Quota gate is intentionally not wired here — it is a Claude-subscription
 # check, and this gptme runner is the failover when that subscription is exhausted.
-# Set FORCE_SESSION=1 to bypass (manual/debug runs).
+# Bypass: FORCE_SESSION=1, or a TTY stdin (direct manual run). Scheduled
+# systemd/cron invocations have no TTY and still go through the gate.
 CONTRIB_DIR="$WORKSPACE/gptme-contrib/scripts"
-if [ "${FORCE_SESSION:-0}" != "1" ]; then
+if [ "${FORCE_SESSION:-0}" = "1" ]; then
+    log "FORCE_SESSION=1 — skipping session gate"
+elif [ -t 0 ]; then
+    log "Manual run (TTY stdin) — skipping session gate"
+else
     SESSION_GATE_SCRIPT="$CONTRIB_DIR/runs/autonomous/session-gate.py"
     if [ -f "$SESSION_GATE_SCRIPT" ]; then
         GATE_RC=0
@@ -96,13 +111,7 @@ export GPTME_CHAT_HISTORY=true
 
 log "Starting autonomous run (timeout: ${SCRIPT_TIMEOUT}s / 50 minutes)..."
 log "Workspace: $WORKSPACE"
-
-# Detect if this is a scheduled run or manual trigger
-if [ -n "$INVOCATION_ID" ]; then
-    RUN_TYPE="Scheduled (systemd)"
-else
-    RUN_TYPE="Manual"
-fi
+log "Run type: $RUN_TYPE"
 
 # Queue file paths (customize queue system as needed)
 # shellcheck disable=SC2034  # Template placeholders for agent customization

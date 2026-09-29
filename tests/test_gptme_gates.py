@@ -7,6 +7,8 @@ stubbed so the script can run to completion in a temporary workspace.
 
 from __future__ import annotations
 
+import os
+import pty
 import stat
 import subprocess
 from pathlib import Path
@@ -67,10 +69,38 @@ def _run(
     return subprocess.run(
         ["bash", str(script)],
         env=env,
+        stdin=subprocess.DEVNULL,  # non-TTY: scheduled/CI path still hits the gate
         capture_output=True,
         text=True,
         timeout=15,
     )
+
+
+def _run_tty(
+    tmp_path: Path, env_extra: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
+    """Run the runner with a PTY on stdin so `[ -t 0 ]` is true (manual path)."""
+    script = tmp_path / "scripts" / "runs" / "autonomous" / "autonomous-run.sh"
+    env = {
+        "PATH": f"{tmp_path}/bin:/usr/bin:/bin",
+        "HOME": str(tmp_path),
+    }
+    if env_extra:
+        env.update(env_extra)
+    master_fd, slave_fd = pty.openpty()
+    try:
+        return subprocess.run(
+            ["bash", str(script)],
+            env=env,
+            stdin=slave_fd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=15,
+        )
+    finally:
+        os.close(master_fd)
+        os.close(slave_fd)
 
 
 def _write_session_gate(tmp_path: Path, exit_code: int) -> None:
@@ -91,6 +121,17 @@ def test_force_session_bypasses_gate(tmp_path: Path) -> None:
     _write_session_gate(tmp_path, 0)
     result = _run(tmp_path, {"FORCE_SESSION": "1"})
     assert result.returncode == 0
+    assert "FORCE_SESSION=1" in result.stdout
+    assert marker.exists()
+
+
+def test_tty_stdin_bypasses_gate(tmp_path: Path) -> None:
+    """Direct manual run (TTY stdin) skips the session gate and still runs."""
+    marker = _setup_workspace(tmp_path)
+    _write_session_gate(tmp_path, 0)
+    result = _run_tty(tmp_path)
+    assert result.returncode == 0
+    assert "TTY stdin" in result.stdout
     assert marker.exists()
 
 

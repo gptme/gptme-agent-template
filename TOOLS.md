@@ -90,11 +90,12 @@ pre-commit run mypy --all-files
 ## Autonomous Operation
 
 ```bash
-# Run with gptme backend
+# gptme backend — a terminal run skips the session gate
 ./scripts/runs/autonomous/autonomous-run.sh
 
-# Run with Claude Code backend
-./scripts/runs/autonomous/autonomous-run-cc.sh
+# Force a run from a non-TTY context (scripts, CI, cron), either backend
+FORCE_SESSION=1 ./scripts/runs/autonomous/autonomous-run.sh
+FORCE_SESSION=1 ./scripts/runs/autonomous/autonomous-run-cc.sh
 
 # Build system prompt for Claude Code
 ./scripts/build-system-prompt.sh
