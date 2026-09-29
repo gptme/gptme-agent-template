@@ -26,6 +26,7 @@ allowed_entries:
   - README.md
 
   # Core directories (do not add more top-level dirs without design discussion)
+  - .claude
   - .github
   - dotfiles
   - gptme-contrib

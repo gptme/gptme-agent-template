@@ -1,0 +1,1 @@
+../../gptme-contrib/scripts/claude-code-hooks/match-lessons.py
