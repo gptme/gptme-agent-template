@@ -40,14 +40,39 @@ cleanup() {
     pkill -P $$ gptme 2>/dev/null || true
     # shellcheck disable=SC2317  # Called by trap, not directly
     sleep 1
-    # Clean up temporary prompt file
+    # Clean up temporary prompt file. Guard the unset case so an early skip
+    # (session gate, before PROMPT_FILE is assigned) still exits 0 under set -e.
     # shellcheck disable=SC2317  # Called by trap, not directly
-    [ -f "$PROMPT_FILE" ] && rm -f "$PROMPT_FILE"
+    if [ -n "${PROMPT_FILE:-}" ] && [ -f "$PROMPT_FILE" ]; then
+        rm -f "$PROMPT_FILE"
+    fi
 }
 
 # Ensure cleanup on exit
 trap cleanup EXIT
 trap 'log "ERROR: Script failed at line $LINENO"' ERR
+
+# --- Pre-run session gate (from gptme-contrib) ---
+# Skip quiet scheduled runs when there's no trigger. Lives in gptme-contrib and
+# degrades gracefully when absent: a fresh fork with no contrib checkout still
+# runs. Quota gate is intentionally not wired here — it is a Claude-subscription
+# check, and this gptme runner is the failover when that subscription is exhausted.
+# Set FORCE_SESSION=1 to bypass (manual/debug runs).
+CONTRIB_DIR="$WORKSPACE/gptme-contrib/scripts"
+if [ "${FORCE_SESSION:-0}" != "1" ]; then
+    SESSION_GATE_SCRIPT="$CONTRIB_DIR/runs/autonomous/session-gate.py"
+    if [ -f "$SESSION_GATE_SCRIPT" ]; then
+        GATE_RC=0
+        python3 "$SESSION_GATE_SCRIPT" --workspace "$WORKSPACE" || GATE_RC=$?
+        case "$GATE_RC" in
+            0) log "Session gate: no trigger — exiting cleanly"; exit 0 ;;
+            2) log "Session gate errored (rc=2) — failing open, running anyway" ;;
+            *) ;;  # rc=1: a trigger fired, proceed
+        esac
+    else
+        log "session-gate.py not found — skipping session gate"
+    fi
+fi
 
 # Pull latest changes from remote
 log "Pulling latest changes from git..."
