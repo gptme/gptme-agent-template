@@ -16,6 +16,12 @@ Choices below fall into two kinds:
 - **Worked example** *(marked explicitly)* — one operator's concrete setup,
   included as an illustration, not a recommendation to copy verbatim.
 
+> **Reduced forks.** Any guidance naming an autonomous launcher
+> (`scripts/runs/autonomous/autonomous-run.sh`, `autonomous-run-cc.sh`) applies
+> to a full fork only. Forks created with `--minimal` or `--without-autonomous`
+> omit `scripts/runs/` (a stub README remains in its place); re-fork without
+> those flags, or copy the run scripts from the template, before following it.
+
 ## Where it should run
 
 An agent that's supposed to keep running needs a host that keeps running
@@ -63,12 +69,15 @@ the plan's rate limits, and which provider you compare against.
 
 Practical shape that has held up:
 - **Flat-rate subscription plans as the primary driver for substantial
-  autonomous volume** — but match the plan to the launcher that authenticates
-  against it. This template ships two launchers: **gptme**
+  autonomous volume** — but match the plan to the authentication path the
+  launcher actually uses. This template ships two launchers: **gptme**
   (`scripts/runs/autonomous/autonomous-run.sh`) and **Claude Code**
-  (`autonomous-run-cc.sh`). Claude Max is documented for the Claude Code
-  launcher; the gptme launcher bills provider API keys (e.g. OpenRouter) per
-  token, so a Claude Max subscription does not give it flat-rate billing.
+  (`autonomous-run-cc.sh`). A launcher only gives flat-rate billing for a
+  subscription it is wired to authenticate against: Claude Max for the Claude
+  Code launcher; for gptme, its subscription-backed providers (ChatGPT Plus/Pro,
+  SuperGrok) rather than an API-key provider like OpenRouter, which bills per
+  token. Choosing a subscription the launcher's auth path doesn't support
+  silently leaves it on per-token billing.
 - **A cheap-model tier wired in from day one**, not retrofitted later. Route
   mechanical work (search, formatting, simple transforms, first-pass
   triage) to a cheap model (e.g. via OpenRouter — `deepseek-v4-flash` or
