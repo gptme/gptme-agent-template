@@ -54,13 +54,21 @@ Give the agent its own identity, not yours:
 
 ## Costs
 
-Running one model provider by the token adds up fast, and the difference
-between paying per-token and using a flat-rate subscription plan is roughly
-**an order of magnitude (~20x)** for equivalent volume — not a rounding error.
+Running one model provider by the token adds up fast. On one long-running
+deployment, moving the bulk of autonomous volume onto a flat-rate subscription
+cut monthly spend by **roughly an order of magnitude (~20x)** at comparable
+volume. Treat that as one observed data point, not a general constant — the
+multiple depends on how much work routes to a cheap tier, how close you run to
+the plan's rate limits, and which provider you compare against.
 
 Practical shape that has held up:
-- **Flat-rate subscription plans** (e.g. Claude Max, ChatGPT Plus/Pro) as the
-  primary driver for substantial autonomous volume.
+- **Flat-rate subscription plans as the primary driver for substantial
+  autonomous volume** — but match the plan to the launcher that authenticates
+  against it. This template ships two launchers: **gptme**
+  (`scripts/runs/autonomous/autonomous-run.sh`) and **Claude Code**
+  (`autonomous-run-cc.sh`). Claude Max is documented for the Claude Code
+  launcher; the gptme launcher bills provider API keys (e.g. OpenRouter) per
+  token, so a Claude Max subscription does not give it flat-rate billing.
 - **A cheap-model tier wired in from day one**, not retrofitted later. Route
   mechanical work (search, formatting, simple transforms, first-pass
   triage) to a cheap model (e.g. via OpenRouter — `deepseek-v4-flash` or
@@ -127,6 +135,15 @@ If you do run multiple harnesses, make sure they share the same durable state
 (git-tracked identity files, task tracker, lessons) rather than each keeping
 its own — otherwise you get two agents with diverging memories instead of one
 agent with two front-ends.
+
+Sharing state has a concurrency cost: the launchers do **not** share a run
+lock. The gptme runner takes no lock at all, and the Claude Code runner's lock
+only guards other Claude Code runs — it does not block a gptme run. Scheduling
+both against the same workspace at overlapping times lets them edit and commit
+tasks and journals simultaneously, producing file races and Git conflicts.
+**Serialize runs across harnesses** (one scheduler per workspace, or an
+external lock wrapped around both launchers) rather than running them side by
+side.
 
 ## Before you start: a short checklist
 
