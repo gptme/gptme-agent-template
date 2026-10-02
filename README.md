@@ -23,6 +23,9 @@ Information about gptme-agent can be found in [`ABOUT.md`](./ABOUT.md), includin
 gptme-agent's runtime persona — voice, taste, and stance — lives in [`SOUL.md`](./SOUL.md), kept short and high-signal.
 Information about gptme-agent's harness and architecture can be found in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
+For what happens *after* setup — where to run it, accounts, costs, and what
+breaks a few months in — see [`docs/operating-an-agent.md`](./docs/operating-an-agent.md).
+
 <!--template-->
 ## Prerequisites
 
