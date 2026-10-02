@@ -1,6 +1,6 @@
 # Operating an agent
 
-*Last verified: 2026-09-30 — verify this date is recent before trusting the specifics below; costs, model names, and provider quirks go stale fastest.*
+*Last verified: 2026-10-02 — verify this date is recent before trusting the specifics below; costs, model names, and provider quirks go stale fastest.*
 
 This template gets you from zero to a running agent. It doesn't tell you what
 happens after that — where it should live, what it costs, what breaks a few
@@ -32,14 +32,17 @@ independently of your laptop being open. In rough order of commitment:
    unsupervised.
 2. **Your own hardware, virtualized** — more control, no recurring cloud bill,
    but you own the uptime.
-3. **A managed agent-hosting platform** (e.g. gptme-cloud, once available) —
-   trades control for zero ops burden.
+3. **A managed hosting platform** (e.g. [gptme.ai](https://gptme.ai), in
+   limited access at time of writing) — trades control for zero ops burden.
 
 *(Worked example)*: one long-running agent runs in an LXC container on a
-Proxmox cluster node (24 cores / 48GiB), sharing the host kernel — not a full
+Proxmox cluster node (24 cores / 30GiB), sharing the host kernel — not a full
 VM. Several sibling agents (same operator) run as identically-shaped LXCs on
 the same cluster. The kernel is shared, not namespaced per-agent — don't
-assume VM-grade isolation from a container-only deployment.
+assume VM-grade isolation from a container-only deployment. Memory, not CPU,
+turned out to be the binding limit on how many sessions can run at once; size
+every guest so the sum of their memory limits stays below the host's physical
+RAM (an over-committed node once OOM-killed the host itself).
 
 Whatever you pick, decide the isolation boundary *before* the agent's first
 unattended run: an agent with shell access will eventually run something you
