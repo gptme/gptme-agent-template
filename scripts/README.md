@@ -7,21 +7,22 @@ This directory contains scripts for agent workspace automation and operations.
 ```txt
 scripts/
 ├── install-deps.sh        # Check and install dependencies
-├── context.sh              # Main context generation orchestrator
-├── context-journal.sh      # Recent journal entries context
-├── context-workspace.sh    # Workspace files overview
-├── gptodo                  # Task management CLI (install via: uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo)
+├── context.sh              # Main context generation orchestrator (symlink into gptme-contrib)
+├── context-journal.sh      # Recent journal entries context (symlink into gptme-contrib)
+├── context-workspace.sh    # Workspace files overview (symlink into gptme-contrib)
+├── tasks.py                # Deprecated wrapper around the gptodo CLI (symlink into gptme-contrib); use `gptodo` directly
 ├── search.sh              # Multi-source search across workspace
 ├── compare.sh             # Compare files or directories
 ├── fork.py                # Agent forking automation
 ├── runs/                  # Autonomous run infrastructure
 │   └── autonomous/
-│       ├── autonomous-run.sh      # Main autonomous run script
-│       └── autonomous-prompt.txt  # Prompt template for runs
-├── precommit/             # Pre-commit hook implementations
-│   └── [various validation scripts]
+│       ├── autonomous-run.sh      # gptme autonomous run script (prompt is inline)
+│       ├── autonomous-run-cc.sh   # Claude Code autonomous run script
+│       └── README.md
 └── README.md              # This file
 ```
+
+Pre-commit hook implementations live in the gptme-contrib submodule (`gptme-contrib/scripts/precommit/`), not here.
 
 ## Context Generation System
 
@@ -121,7 +122,7 @@ $SCRIPT_DIR/context-notifications.sh  # Your custom script
 
 ## Task Management: gptodo (Optional)
 
-**Purpose**: CLI for task management (status, ready, list, edit operations).
+**Purpose**: File-based task manager and work queue for the Markdown tasks in `tasks/` (status, dependency-aware selection, claims, edits, lint). It is not vendored in `scripts/`; install it as a CLI. Full docs: [gptodo README](https://github.com/gptme/gptme-contrib/tree/master/packages/gptodo). To use a different tracker, see [`TASKS.md`](../TASKS.md#using-a-different-task-tracker).
 
 **Installation**:
 ```bash
@@ -160,10 +161,11 @@ Located in `scripts/runs/autonomous/`:
 - Handles git operations, session logging, queue updates
 - See scripts/runs/autonomous/README.md for details
 
-**autonomous-prompt.txt**:
-- Template prompt for autonomous sessions
-- Loaded by autonomous-run.sh
-- Customizable per agent
+**autonomous-run-cc.sh**:
+- Same role for the Claude Code backend
+- Builds the system prompt with `build-system-prompt.sh`
+
+Both scripts define their session prompt inline; edit it there to customize the workflow.
 
 ## Journal System
 
