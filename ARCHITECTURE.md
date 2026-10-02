@@ -19,10 +19,14 @@ For information about tools used in this workspace, see [`TOOLS.md`](./TOOLS.md)
 The task system helps to track and manage work effectively across sessions. It consists of:
 
 - Task files in [`tasks/`](./tasks/) as single source of truth
-- Task management CLI via `gptodo` (optional, install from gptme-contrib)
+- Task management CLI via [`gptodo`](https://github.com/gptme/gptme-contrib/tree/master/packages/gptodo) (optional, install from gptme-contrib)
 - Daily progress logs in [`journal/`](./journal/)
 
-See [`TASKS.md`](./TASKS.md) for more details on the task system.
+See [`TASKS.md`](./TASKS.md) for more details on the task system, including how to use a different tracker.
+
+## Communication
+
+No communication system is wired in by default. [`gptmail`](https://github.com/gptme/gptme-contrib/tree/master/packages/gptmail) from gptme-contrib adds email and agent-to-agent messaging that store messages as Markdown files in the workspace (`email/` and `messages/`); any other email client, chat bridge, or message bus works as well. See [`TOOLS.md`](./TOOLS.md#communication-optional).
 
 ## Journal System
 

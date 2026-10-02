@@ -65,7 +65,7 @@ echo "entry" >> journal/2025-10-14/topic.md
 ### Tasks
 
 - Managed via files in `tasks/` with YAML frontmatter
-- CLI: `gptodo status|ready|show|edit`
+- CLI: `gptodo status|ready|show|edit` ([gptodo](https://github.com/gptme/gptme-contrib/tree/master/packages/gptodo); see `TASKS.md` for states and for swapping in another tracker)
 - Select work with `gptodo ready --skip-claimed` (not `gptodo status` — status includes blocked/waiting tasks)
 - Assess complexity by scope, not time
 - Mark done when core functionality works
