@@ -4,25 +4,51 @@ Tools available in the workspace for managing tasks, searching, and operating au
 
 ## Task Management
 
+Tasks live in `tasks/` and are managed with [gptodo](https://github.com/gptme/gptme-contrib/tree/master/packages/gptodo). See [`TASKS.md`](./TASKS.md) for the format, states, and how to use a different tracker.
+
 ```bash
 # View task status (overview — includes blocked/waiting tasks)
 gptodo status              # All tasks
-gptodo status --compact    # Active only
+gptodo status --compact    # Only backlog/todo/active/ready_for_review
 
 # Select unblocked work (use this instead of scanning status)
 gptodo ready                         # Unblocked backlog/todo/active
 gptodo ready --skip-claimed --jsonl  # Concurrent sessions: hide already-claimed tasks
+gptodo next                          # The single best task to pick up
 
 # View specific task
 gptodo show <task-id>
 
 # Update task
-gptodo edit <task-id> --set state active
+gptodo claim <task-id>                   # Set active and record the owner
+gptodo edit <task-id> --set state done
 gptodo edit <task-id> --set priority high
-gptodo edit <task-id> --add tag feature
+gptodo edit <task-id> --add tags feature
 ```
 
-Install: `pipx install gptme-contrib` or `uv pip install gptme-contrib`
+Install: `uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo`
+
+## Communication (optional)
+
+The workspace does not ship a communication system wired in. [gptmail](https://github.com/gptme/gptme-contrib/tree/master/packages/gptmail) is the companion package from gptme-contrib: real email (via `mbsync` + `msmtp`) and SSH-based agent-to-agent messaging, with every message stored as a Markdown file in the workspace and replies tracked so each message is answered once. Any other email client, chat bridge, or message bus works too.
+
+If gptmail is installed and configured (see its README for the `email/` folders, `.env` settings and `messages/agents.yaml` registry):
+
+```bash
+# Email
+gptmail check-unreplied                  # Unreplied mail from allowlisted senders
+gptmail read <message-id> --thread
+gptmail reply <message-id> "Thanks, on it."
+gptmail send <draft-id>
+gptmail mark-no-reply <message-id> --reason "informational"
+
+# Agent-to-agent messages
+gptmail agent pending                    # Messages you still owe a reply to
+gptmail agent send <agent> "Subject" "Body"
+gptmail agent reply <file.md> "Reply"
+```
+
+Install: `uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptmail`
 
 ## Search & Navigation
 

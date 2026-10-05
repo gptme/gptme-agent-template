@@ -292,8 +292,7 @@ preserve user-owned state across system updates.
 
 <!--/state-->
 **[`scripts/`](./scripts/)**: Automation and utilities
-- `context.sh` - Main context generation orchestrator
-- `gptodo` - Task management CLI (install from gptme-contrib)
+- `context.sh` - Main context generation orchestrator (includes `gptodo status --compact` when gptodo is installed)
 <!--autonomous-->
 - `runs/autonomous/` - Autonomous operation infrastructure
 <!--/autonomous-->
@@ -302,3 +301,19 @@ preserve user-owned state across system updates.
 **[`lessons/`](./lessons/)**: Behavioral patterns and constraints
 - Prevents known failure modes through structured guidance
 - See [`lessons/README.md`](./lessons/README.md) for lesson system documentation
+
+## Tasks and Communication
+
+Two packages from [gptme-contrib](https://github.com/gptme/gptme-contrib) cover the "what should I work on" and "who do I owe a reply" questions. Both are optional CLIs installed separately; the workspace runs without them.
+
+| Package | What it gives the agent | Status in this workspace |
+|---------|-------------------------|--------------------------|
+| [**gptodo**](https://github.com/gptme/gptme-contrib/tree/master/packages/gptodo) | File-based task manager and work queue: Markdown + YAML frontmatter tasks in `tasks/`, dependency-aware `ready`/`next` selection, claims, a state machine, and lint | Wired in: task files follow its format, `scripts/context.sh` shows `gptodo status --compact`, a pre-commit hook runs `gptodo check`, and [`TASKS.md`](./TASKS.md) / [`WORKFLOW.md`](./WORKFLOW.md) select work with `gptodo ready` |
+| [**gptmail**](https://github.com/gptme/gptme-contrib/tree/master/packages/gptmail) | Email (via `mbsync` + `msmtp`) and SSH agent-to-agent messaging, with messages stored as Markdown files in the workspace and replies tracked so each message is answered once | Not wired in: install and configure it if the agent should handle email or message other agents (see [`TOOLS.md`](./TOOLS.md#communication-optional)) |
+
+```sh
+uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptodo
+uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptmail  # optional
+```
+
+**Bring your own.** You can use a different task tracker (GitHub Issues, Linear, a single `TODO.md`, …) or communication system (any email client, chat bridge, or message bus). [`TASKS.md`](./TASKS.md#using-a-different-task-tracker) lists the places that call gptodo and what to replace.
