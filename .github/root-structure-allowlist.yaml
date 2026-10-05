@@ -29,6 +29,7 @@ allowed_entries:
   - .claude
   - .github
   - dotfiles
+  - docs
   - gptme-contrib
   - journal
   - knowledge

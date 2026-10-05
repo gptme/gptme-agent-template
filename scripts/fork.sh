@@ -211,6 +211,9 @@ function copy_files() {
 
 # Core documentation and configuration (always included)
 copy_file README.md
+# The README links to docs/operating-an-agent.md; copy the docs directory too
+# so the link resolves in forked workspaces.
+copy_file docs
 cp "${SOURCE_DIR}/Makefile" "${TARGET_DIR}/Makefile"  # copy without replacing NAME_TEMPLATE
 copy_file ABOUT.md
 copy_file SOUL.md
