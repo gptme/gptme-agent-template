@@ -66,6 +66,9 @@ This document describes what remains and what gets cleared when forking an agent
 2. Clear personal content
 3. Initialize new identity
 4. Update configurations
-5. Create first task
+5. Create first task — identity interview in
+   [`tasks/templates/initial-agent-setup.md`](../tasks/templates/initial-agent-setup.md);
+   first coding loop in
+   [`docs/first-task-walkthrough.md`](../docs/first-task-walkthrough.md)
 
 For detailed forking process, see [`agent-forking.md`](./agent-forking.md).
