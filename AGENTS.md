@@ -179,6 +179,30 @@ See gptme/gptme#42 for context.
 See https://github.com/gptme/gptme/issues/42 for context.
 ```
 
+## Memory
+
+Persistent, version-controlled memory lives in `memory/` at the repo root. Keep
+each memory as its own file and add a one-line pointer to `memory/MEMORY.md` — the
+index loaded into context each session.
+
+**Why the directory ships with a stub:** Claude Code stores its per-project memory
+under `~/.claude/projects/<mangled-path>/memory`, *outside* this repo. To
+version-control it, that directory is a symlink into `memory/` — but the symlink
+itself is not tracked, so **a fresh clone on a new host has no memory wiring and
+fails silently** (Claude Code just creates a plain empty directory and writes land
+outside git). `scripts/setup-memory.sh` recreates the bridge idempotently:
+
+```bash
+scripts/setup-memory.sh          # create/repair the bridge
+scripts/setup-memory.sh --check  # verify only (exit 1 if missing/wrong)
+```
+
+It runs automatically from `scripts/fork.sh` and `scripts/install-deps.sh`, and is
+a graceful no-op on a pure-gptme host (no `~/.claude`) — memory still lives in
+`memory/`, there is just no Claude Code bridge to build. Harnesses without memory
+hooks (Codex, etc.) reach memory only through this section, so read `memory/` at
+session start and write pointers to `memory/MEMORY.md`.
+
 ## Troubleshooting
 
 ### Pre-Commit Hooks Failing

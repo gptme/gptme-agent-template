@@ -42,6 +42,7 @@ AGENT_SPECIFIC_SCRIPTS = {
     "install-deps.sh",  # Agent-specific dependency installer
     "migrate-journals.py",  # Journal format migration utility
     "search.sh",  # Workspace search utility
+    "setup-memory.sh",  # One-time bootstrap: creates the CC memory bridge for this agent
     # Autonomous run scripts (agent-customized copies of the run loop infrastructure)
     "autonomous-run.sh",
     "autonomous-run-cc.sh",
