@@ -66,6 +66,10 @@ embeddings/
 !package.json
 !tsconfig.json
 !*.config.json
+# Memory index must be tracked (blanket *.json above would silently ignore it)
+!memory/.memory-index.json
+# ...but not ephemeral per-session memory scratch files
+memory/pending-*.md
 *.png
 *.jpg
 *.pdf

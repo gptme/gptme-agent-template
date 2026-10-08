@@ -200,6 +200,20 @@ else
     echo "   git submodule update --init gptme-contrib, then re-run this script)"
 fi
 
+# Version-controlled memory bridge. Advisory: the Claude Code memory dir lives
+# outside the repo, so a fresh clone has no wiring and fails silently. Create/
+# repair it idempotently (graceful no-op on a pure-gptme host).
+echo ""
+echo -e "${BLUE}Memory bridge:${NC}"
+echo ""
+MEM_SETUP="$SCRIPT_DIR/setup-memory.sh"
+if [[ -f "$MEM_SETUP" ]]; then
+    # Never let a bridge hiccup abort the dependency check.
+    "$MEM_SETUP" || true
+else
+    echo -e "${YELLOW}→${NC} scripts/setup-memory.sh not found — skipping memory bridge"
+fi
+
 # Summary
 echo ""
 echo -e "${BLUE}==============================${NC}"

@@ -164,7 +164,7 @@ echo -e "\nCreating new agent '$NEW_AGENT' in directory '$TARGET_DIR'..."
 
 # Create core directory structure
 echo "Creating directory structure..."
-mkdir -p "${TARGET_DIR}"/{journal,tasks/templates,knowledge,lessons,scripts}
+mkdir -p "${TARGET_DIR}"/{journal,tasks/templates,knowledge,lessons,scripts,memory}
 [ "$WITH_PROJECTS" = true ] && mkdir -p "${TARGET_DIR}/projects"
 [ "$WITH_PEOPLE" = true ] && mkdir -p "${TARGET_DIR}/people/templates"
 [ "$WITH_STATE" = true ] && mkdir -p "${TARGET_DIR}/state"
@@ -269,6 +269,11 @@ fi
 copy_file knowledge/agent-forking.md
 copy_file knowledge/forking-workspace.md
 
+# Ship the memory index stub so the directory exists in a fresh fork and
+# scripts/setup-memory.sh has a real bridge target (durability, not gptme
+# visibility). See AGENTS.md "## Memory".
+copy_file memory/MEMORY.md
+
 # Copy lessons (always included — core learning system)
 copy_file lessons/README.md
 copy_file lessons/TEMPLATE.md
@@ -366,6 +371,12 @@ if [ "$WITH_DOTFILES" = true ]; then
 
     echo "✓ Dotfiles symlinks created (use dotfiles/install.sh to activate)"
 fi
+
+# Wire the version-controlled memory bridge. Guarded + idempotent: a graceful
+# no-op on a pure-gptme host (no ~/.claude), it creates the Claude Code bridge
+# symlink into memory/ otherwise, so a fresh fork's memory is version-controlled
+# from the start instead of silently landing outside the repo.
+(cd "${TARGET_DIR}" && WORKSPACE="${TARGET_DIR}" scripts/setup-memory.sh) || true
 
 # Create initial setup task from template
 cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
