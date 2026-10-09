@@ -203,6 +203,20 @@ a graceful no-op on a pure-gptme host (no `~/.claude`) — memory still lives in
 hooks (Codex, etc.) reach memory only through this section, so read `memory/` at
 session start and write pointers to `memory/MEMORY.md`.
 
+**Durability (opt-in):** `setup-memory.sh` ensures writes *reach* `memory/`; it
+does not ensure they get *committed*. Memory is written mid-session, so edits made
+by a session that ends before committing sit uncommitted and are lost on the next
+clean checkout — memory is the highest write-loss directory an agent has.
+`scripts/commit-memory.sh` is a periodic sweep that commits uncommitted `memory/`
+files (explicit paths, flock-serialized, skips `memory/pending-*.md`). It is **not**
+auto-enabled — turn it on deliberately with
+`dotfiles/.config/systemd/user/agent-commit-memory.{service,timer}.example` (or any
+cron/launchd equivalent):
+
+```bash
+scripts/commit-memory.sh          # run one sweep now
+```
+
 ## Troubleshooting
 
 ### Pre-Commit Hooks Failing
