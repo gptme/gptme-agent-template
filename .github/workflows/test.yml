@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ master ]
 
+# PRs: newer push cancels older run. master: running builds finish, queued runs collapse to newest.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.event_name == 'push' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
