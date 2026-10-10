@@ -43,6 +43,7 @@ AGENT_SPECIFIC_SCRIPTS = {
     "migrate-journals.py",  # Journal format migration utility
     "search.sh",  # Workspace search utility
     "setup-memory.sh",  # One-time bootstrap: creates the CC memory bridge for this agent
+    "commit-memory.sh",  # Opt-in periodic sweep that commits uncommitted memory/ writes
     # Autonomous run scripts (agent-customized copies of the run loop infrastructure)
     "autonomous-run.sh",
     "autonomous-run-cc.sh",
