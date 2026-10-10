@@ -172,3 +172,8 @@ side.
 
 None of these need a perfect answer on day one. They need *an* answer, so
 the failure isn't a surprise three months in.
+
+## Related
+
+- [README Quick Start](../README.md#quick-start) — zero to `gptme "hello"`
+- [First-task walkthrough](./first-task-walkthrough.md) — first failing test after hello
