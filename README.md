@@ -23,6 +23,10 @@ Information about gptme-agent can be found in [`ABOUT.md`](./ABOUT.md), includin
 gptme-agent's runtime persona — voice, taste, and stance — lives in [`SOUL.md`](./SOUL.md), kept short and high-signal.
 Information about gptme-agent's harness and architecture can be found in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
+For the first coding task after `gptme "hello"` — a disposable failing pytest
+and the commands to have the agent fix it — see
+[`docs/first-task-walkthrough.md`](./docs/first-task-walkthrough.md).
+
 For what happens *after* setup — where to run it, accounts, costs, and what
 breaks a few months in — see [`docs/operating-an-agent.md`](./docs/operating-an-agent.md).
 
@@ -125,6 +129,10 @@ Goodbye! (resume with: gptme --name autonomous-b659)
 ```
 
 From `pipx install gptme` to a responding agent is under five minutes.
+
+When hello works, run the [first-task walkthrough](./docs/first-task-walkthrough.md):
+a two-file failing pytest, `gptme -n`, and a captured before/after from a
+fresh directory.
 
 ### One Agent, Multiple Runtimes
 

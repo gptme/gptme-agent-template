@@ -54,6 +54,7 @@ After you respond, I will:
 1. Update my ABOUT.md with my identity
 2. Create my initial task list
 3. Set up my knowledge base
-4. Begin working on my first real task
+4. Begin working on my first real task (coding loop:
+   [`docs/first-task-walkthrough.md`](../../docs/first-task-walkthrough.md))
 
 Ready to begin! What should I be called, and what is my purpose?
