@@ -1,0 +1,16 @@
+[Unit]
+Description=Agent memory commit sweep (durability for uncommitted memory/ writes)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/path/to/your/workspace
+ExecStart=/path/to/your/workspace/scripts/commit-memory.sh
+StandardOutput=journal
+StandardError=journal
+
+# Agents that keep memory outside memory/ should match setup-memory.sh:
+# Environment=MEMORY_DIR=knowledge/claude-memory
+
+[Install]
+WantedBy=default.target
