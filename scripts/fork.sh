@@ -246,9 +246,11 @@ copy_file scripts
 # Remove template-specific scripts that belong in the template but not in instantiated agents:
 #   check-symlinks.py — template maintenance tool (checks for drift in the template itself)
 #   fork.sh / fork.py — template instantiation tools (agents don't fork other agents, YAGNI)
+#   test-commit-memory.sh — regression runner for the template's commit-memory.sh script
 rm -f "${TARGET_DIR}/scripts/check-symlinks.py"
 rm -f "${TARGET_DIR}/scripts/fork.sh"
 rm -f "${TARGET_DIR}/scripts/fork.py"
+rm -f "${TARGET_DIR}/scripts/test-commit-memory.sh"
 
 if [ "$WITH_AUTONOMOUS" = false ]; then
     echo "  Skipping: autonomous run scripts"

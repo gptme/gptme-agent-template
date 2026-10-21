@@ -108,9 +108,42 @@ test_staged_rename_outside_source() {
     rm -rf "$repo"
 }
 
+# Test 4: in-memory rename — both sides committed in one sweep, second sweep is no-op.
+# Before the fix: first sweep committed only the destination; the staged deletion remained,
+# causing exit 128 on the second sweep.
+test_in_memory_rename() {
+    local repo
+    repo="$(mktemp -d)"
+    setup_repo "$repo"
+    echo "base data" >"$repo/memory/baseline.md"
+    git -C "$repo" add .
+    ALLOW_GIT_IDENTITY=1 git -C "$repo" commit -q -m "add baseline"
+    # Stage an in-memory rename
+    git -C "$repo" mv memory/baseline.md memory/renamed.md
+    # First sweep: must commit both destination and source deletion
+    (cd "$repo" && ALLOW_GIT_IDENTITY=1 MEMORY_DIR=memory bash scripts/commit-memory.sh) || return 1
+    git -C "$repo" log --oneline --grep="periodic sweep" | grep -q . || { echo "  no sweep commit found"; return 1; }
+    git -C "$repo" show HEAD -- memory/renamed.md | grep -q "base data" || { echo "  renamed.md not in HEAD"; return 1; }
+    # Source deletion must be in HEAD (not still staged)
+    if git -C "$repo" diff --cached --name-only | grep -q "memory/baseline.md"; then
+        echo "  baseline.md deletion still staged after first sweep"; return 1
+    fi
+    if git -C "$repo" ls-files memory/baseline.md | grep -q .; then
+        echo "  baseline.md still tracked in HEAD"; return 1
+    fi
+    # Second sweep must be a clean no-op (exit 0, no new commit)
+    local before_count after_count
+    before_count=$(git -C "$repo" rev-list --count HEAD)
+    (cd "$repo" && ALLOW_GIT_IDENTITY=1 MEMORY_DIR=memory bash scripts/commit-memory.sh) || return 1
+    after_count=$(git -C "$repo" rev-list --count HEAD)
+    [ "$before_count" -eq "$after_count" ] || { echo "  second sweep created an extra commit (exit-128 regression)"; return 1; }
+    rm -rf "$repo"
+}
+
 run_test "helper-unavailable fallback" test_no_helper
 run_test "helper-present route" test_with_helper
 run_test "staged rename with outside-memory source-tail collision" test_staged_rename_outside_source
+run_test "in-memory rename: both sides committed, second sweep is no-op" test_in_memory_rename
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

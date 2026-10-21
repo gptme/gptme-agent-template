@@ -56,38 +56,68 @@ fi
 # Collect uncommitted memory files (modified + untracked), newline-safe.
 # --others --exclude-standard honors .gitignore (skips memory/pending-*.md).
 # Each non-rename entry from `git status --porcelain -z` is "XY path\0".
-# Rename entries emit two NUL-terminated tokens: "R  new-path\0old-path\0".
-# We skip old-path tokens (no "XY " prefix) so mangled paths never reach git add.
-files=()
+# Rename/copy entries emit two NUL-terminated tokens: "R  new-path\0old-path\0".
+#
+# We build two lists:
+#   add_files    — paths to stage with git add (new/modified; NOT rename sources, which
+#                  are already gone from the working tree and can't be re-added)
+#   commit_paths — all paths for the git commit pathspec, including rename source paths
+#                  so the staged deletion lands in the same commit as the new file.
+add_files=()
+commit_paths=()
+prev_was_rename=false
 while IFS= read -r -d '' entry; do
-    # Status entries have a 2-char code + space at positions 0-2; old rename paths do not.
+    if $prev_was_rename; then
+        # Rename/copy source token: the file is already gone from the working tree and
+        # already staged for deletion. Include in commit pathspec only — git add would
+        # fail with "pathspec did not match any files".
+        commit_paths+=("$entry")
+        prev_was_rename=false
+        continue
+    fi
+    # Status entries have a 2-char code + space at positions 0-2.
     [[ ${#entry} -lt 3 || "${entry:2:1}" != " " ]] && continue
-    files+=("${entry:3}")
+    code="${entry:0:2}"
+    path="${entry:3}"
+    add_files+=("$path")
+    commit_paths+=("$path")
+    # R or C in the index column means the next NUL token is the source path.
+    [[ "${code:0:1}" == "R" || "${code:0:1}" == "C" ]] && prev_was_rename=true || prev_was_rename=false
 done < <(git status --porcelain -z -- "$MEMORY_PATH")
+
+# Use add_files as the size-check: rename source entries are in commit_paths only.
+files=("${add_files[@]}")
 
 if [ ${#files[@]} -eq 0 ]; then
     echo "commit-memory: no uncommitted files in $MEMORY_DIR/ — nothing to do"
     exit 0
 fi
 
-echo "commit-memory: committing ${#files[@]} file(s) in $MEMORY_DIR/"
+echo "commit-memory: committing ${#commit_paths[@]} file(s) in $MEMORY_DIR/"
 
-MSG="chore(memory): periodic sweep — commit ${#files[@]} file(s)"
+MSG="chore(memory): periodic sweep — commit ${#commit_paths[@]} file(s)"
 
 # Prefer git-safe-commit (flock + hot-worktree guards + #642 safeguard). Resolve
 # it by absolute path, NOT via PATH: a systemd user unit inherits a minimal PATH
 # that usually lacks ~/bin, so a PATH lookup would silently exit 127 while still
 # logging "committing N file(s)" — looking like it worked when it did nothing.
+#
+# git-safe-commit calls git add internally, so it cannot safely receive rename
+# source paths (already gone from the working tree — git add would fail with
+# "pathspec did not match any files"). Fall back to the plain path when rename
+# sources are present; our own flock (above) already serializes against other sweeps.
 SAFE_COMMIT="$REPO_ROOT/scripts/git-safe-commit"
-if [ -x "$SAFE_COMMIT" ]; then
+has_rename_sources=$(( ${#commit_paths[@]} - ${#add_files[@]} ))
+if [ -x "$SAFE_COMMIT" ] && [ "$has_rename_sources" -eq 0 ]; then
+    # No rename sources — git-safe-commit can handle the full add+commit cycle.
     # Scope the dirty-worktree guard to off: we commit an explicit memory-only
     # pathspec, and a hot worktree may legitimately carry unrelated unstaged
     # edits from a live session that this sweep must not block on.
-    GIT_SAFE_COMMIT_DIRTY_GUARD=off "$SAFE_COMMIT" "${files[@]}" -m "$MSG"
+    GIT_SAFE_COMMIT_DIRTY_GUARD=off "$SAFE_COMMIT" "${add_files[@]}" -m "$MSG"
 else
-    # Fallback: the lock above already serializes us against other sweeps.
-    git add -- "${files[@]}"
-    git commit -m "$MSG" -- "${files[@]}"
+    # Fallback: stage new/modified files, then commit all paths (including staged deletions).
+    git add -- "${add_files[@]}"
+    git commit -m "$MSG" -- "${commit_paths[@]}"
 fi
 
 echo "commit-memory: done"
