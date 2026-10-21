@@ -55,11 +55,15 @@ fi
 
 # Collect uncommitted memory files (modified + untracked), newline-safe.
 # --others --exclude-standard honors .gitignore (skips memory/pending-*.md).
+# Each non-rename entry from `git status --porcelain -z` is "XY path\0".
+# Rename entries emit two NUL-terminated tokens: "R  new-path\0old-path\0".
+# We skip old-path tokens (no "XY " prefix) so mangled paths never reach git add.
 files=()
-while IFS= read -r -d '' f; do
-    files+=("$f")
-done < <(git status --porcelain -z -- "$MEMORY_PATH" | \
-         while IFS= read -r -d '' entry; do printf '%s\0' "${entry:3}"; done)
+while IFS= read -r -d '' entry; do
+    # Status entries have a 2-char code + space at positions 0-2; old rename paths do not.
+    [[ ${#entry} -lt 3 || "${entry:2:1}" != " " ]] && continue
+    files+=("${entry:3}")
+done < <(git status --porcelain -z -- "$MEMORY_PATH")
 
 if [ ${#files[@]} -eq 0 ]; then
     echo "commit-memory: no uncommitted files in $MEMORY_DIR/ — nothing to do"
@@ -83,7 +87,7 @@ if [ -x "$SAFE_COMMIT" ]; then
 else
     # Fallback: the lock above already serializes us against other sweeps.
     git add -- "${files[@]}"
-    git commit -- "${files[@]}" -m "$MSG"
+    git commit -m "$MSG" -- "${files[@]}"
 fi
 
 echo "commit-memory: done"
