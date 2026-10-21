@@ -79,16 +79,20 @@ while IFS= read -r -d '' entry; do
     [[ ${#entry} -lt 3 || "${entry:2:1}" != " " ]] && continue
     code="${entry:0:2}"
     path="${entry:3}"
+    # D in index: staged deletion — file is gone from the working tree, git add
+    # would fail with "pathspec did not match any files". Add to commit_paths only
+    # so the staged deletion lands in the sweep commit without a git add attempt.
+    if [[ "${code:0:1}" == "D" ]]; then
+        commit_paths+=("$path")
+        continue
+    fi
     add_files+=("$path")
     commit_paths+=("$path")
     # R or C in the index column means the next NUL token is the source path.
     [[ "${code:0:1}" == "R" || "${code:0:1}" == "C" ]] && prev_was_rename=true || prev_was_rename=false
 done < <(git status --porcelain -z -- "$MEMORY_PATH")
 
-# Use add_files as the size-check: rename source entries are in commit_paths only.
-files=("${add_files[@]}")
-
-if [ ${#files[@]} -eq 0 ]; then
+if [ ${#commit_paths[@]} -eq 0 ]; then
     echo "commit-memory: no uncommitted files in $MEMORY_DIR/ — nothing to do"
     exit 0
 fi
@@ -109,14 +113,24 @@ MSG="chore(memory): periodic sweep — commit ${#commit_paths[@]} file(s)"
 SAFE_COMMIT="$REPO_ROOT/scripts/git-safe-commit"
 has_rename_sources=$(( ${#commit_paths[@]} - ${#add_files[@]} ))
 if [ -x "$SAFE_COMMIT" ] && [ "$has_rename_sources" -eq 0 ]; then
-    # No rename sources — git-safe-commit can handle the full add+commit cycle.
-    # Scope the dirty-worktree guard to off: we commit an explicit memory-only
-    # pathspec, and a hot worktree may legitimately carry unrelated unstaged
-    # edits from a live session that this sweep must not block on.
+    # No rename/deletion-only sources — git-safe-commit handles the full add+commit
+    # cycle under its own commit.lock (serializes against concurrent session commits).
+    # Scope the dirty-worktree guard to off: a hot worktree may legitimately carry
+    # unrelated unstaged edits from a live session that this sweep must not block on.
     GIT_SAFE_COMMIT_DIRTY_GUARD=off "$SAFE_COMMIT" "${add_files[@]}" -m "$MSG"
 else
-    # Fallback: stage new/modified files, then commit all paths (including staged deletions).
-    git add -- "${add_files[@]}"
+    # Fallback path (rename/deletion sources present, or git-safe-commit absent).
+    # Must also serialize against session commits that hold commit.lock via
+    # git-safe-commit — our commit-memory.lock only serializes sweeps against each
+    # other, not against session commits. Use non-blocking so we skip rather than stall.
+    exec 10>"$GIT_DIR/commit.lock"
+    if ! flock -n 10; then
+        echo "commit-memory: session commit in flight — skipping"
+        exit 0
+    fi
+    if [ ${#add_files[@]} -gt 0 ]; then
+        git add -- "${add_files[@]}"
+    fi
     git commit -m "$MSG" -- "${commit_paths[@]}"
 fi
 

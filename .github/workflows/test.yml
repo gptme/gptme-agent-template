@@ -85,3 +85,18 @@ jobs:
 
     - name: Run gate tests
       run: uv run --with pytest pytest tests/test_cc_gates.py tests/test_gptme_gates.py -v
+
+  commit-memory-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Setup git
+      run: |
+        git config --global user.email "test@example.com"
+        git config --global user.name "Test User"
+
+    - name: Run commit-memory tests
+      run: bash scripts/test-commit-memory.sh

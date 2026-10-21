@@ -140,10 +140,84 @@ test_in_memory_rename() {
     rm -rf "$repo"
 }
 
+# Test 5: standalone staged deletion — git rm'd file is committed by sweep, second sweep no-op.
+# Before the fix: D records entered add_files, causing "pathspec did not match any files" on sweep.
+test_staged_deletion() {
+    local repo
+    repo="$(mktemp -d)"
+    setup_repo "$repo"
+    echo "ephemeral" >"$repo/memory/baseline.md"
+    git -C "$repo" add .
+    ALLOW_GIT_IDENTITY=1 git -C "$repo" commit -q -m "add baseline"
+    # Stage a deletion
+    git -C "$repo" rm -q memory/baseline.md
+    # First sweep: must commit the staged deletion
+    (cd "$repo" && ALLOW_GIT_IDENTITY=1 MEMORY_DIR=memory bash scripts/commit-memory.sh) || return 1
+    git -C "$repo" log --oneline --grep="periodic sweep" | grep -q . || { echo "  no sweep commit found"; return 1; }
+    if git -C "$repo" ls-files memory/baseline.md | grep -q .; then
+        echo "  baseline.md still tracked after sweep"; return 1
+    fi
+    # Second sweep must be a clean no-op
+    local before_count after_count
+    before_count=$(git -C "$repo" rev-list --count HEAD)
+    (cd "$repo" && ALLOW_GIT_IDENTITY=1 MEMORY_DIR=memory bash scripts/commit-memory.sh) || return 1
+    after_count=$(git -C "$repo" rev-list --count HEAD)
+    [ "$before_count" -eq "$after_count" ] || { echo "  second sweep created extra commit"; return 1; }
+    # Bonus: staged deletion + new file committed together in one sweep
+    echo "ephemeral2" >"$repo/memory/old.md"
+    git -C "$repo" add .
+    ALLOW_GIT_IDENTITY=1 git -C "$repo" commit -q -m "add old"
+    echo "new" >"$repo/memory/new.md"
+    git -C "$repo" rm -q memory/old.md
+    before_count=$(git -C "$repo" rev-list --count HEAD)
+    (cd "$repo" && ALLOW_GIT_IDENTITY=1 MEMORY_DIR=memory bash scripts/commit-memory.sh) || return 1
+    after_count=$(git -C "$repo" rev-list --count HEAD)
+    [ "$after_count" -eq $(( before_count + 1 )) ] || { echo "  expected exactly one new commit"; return 1; }
+    git -C "$repo" show HEAD -- memory/new.md | grep -q "new" || { echo "  new.md not in HEAD"; return 1; }
+    if git -C "$repo" ls-files memory/old.md | grep -q .; then
+        echo "  old.md still tracked after sweep"; return 1
+    fi
+    rm -rf "$repo"
+}
+
+# Test 6: custom MEMORY_DIR with space — rename source path must not collide with
+# an unrelated file whose path suffix matches after naive character-3 stripping.
+# Before the fix: "R  ab memory/renamed.md" source "ab memory/baseline.md" was
+# parsed as "memory/baseline.md" (stripped "ab "), silently committing an unrelated edit.
+test_custom_dir_space_collision() {
+    local repo
+    repo="$(mktemp -d)"
+    git init -q -b work "$repo"
+    git -C "$repo" config user.email "agent@example.com"
+    git -C "$repo" config user.name "Agent"
+    mkdir -p "$repo/ab memory" "$repo/memory" "$repo/scripts"
+    echo "inside" >"$repo/ab memory/baseline.md"
+    echo "unrelated" >"$repo/memory/baseline.md"
+    cp "$COMMIT_MEMORY" "$repo/scripts/commit-memory.sh"
+    chmod +x "$repo/scripts/commit-memory.sh"
+    git -C "$repo" add .
+    ALLOW_GIT_IDENTITY=1 git -C "$repo" commit -q -m "init"
+    # Stage a rename inside 'ab memory/'
+    git -C "$repo" mv "ab memory/baseline.md" "ab memory/renamed.md"
+    # Make an unstaged edit to unrelated memory/baseline.md — must NOT be swept
+    echo "unrelated-edit" >>"$repo/memory/baseline.md"
+    (cd "$repo" && ALLOW_GIT_IDENTITY=1 MEMORY_DIR='ab memory' bash scripts/commit-memory.sh) || return 1
+    git -C "$repo" log --oneline --grep="periodic sweep" | grep -q . || { echo "  no sweep commit found"; return 1; }
+    # unrelated memory/baseline.md must remain dirty (not committed)
+    if ! git -C "$repo" diff --name-only | grep -q "memory/baseline.md"; then
+        echo "  unrelated memory/baseline.md was committed (collision regression)"; return 1
+    fi
+    # 'ab memory/renamed.md' must be in HEAD
+    git -C "$repo" show HEAD -- "ab memory/renamed.md" | grep -q "inside" || { echo "  renamed.md not in HEAD"; return 1; }
+    rm -rf "$repo"
+}
+
 run_test "helper-unavailable fallback" test_no_helper
 run_test "helper-present route" test_with_helper
 run_test "staged rename with outside-memory source-tail collision" test_staged_rename_outside_source
 run_test "in-memory rename: both sides committed, second sweep is no-op" test_in_memory_rename
+run_test "standalone staged deletion: committed by sweep, second sweep is no-op" test_staged_deletion
+run_test "custom MEMORY_DIR with space: rename source must not collide with unrelated file" test_custom_dir_space_collision
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
