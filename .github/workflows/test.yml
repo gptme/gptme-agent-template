@@ -85,3 +85,36 @@ jobs:
 
     - name: Run gate tests
       run: uv run --with pytest pytest tests/test_cc_gates.py tests/test_gptme_gates.py -v
+
+  doctor-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install gptme from git master
+      run: pip install "gptme[server] @ git+https://github.com/gptme/gptme.git@master"
+
+    - name: Setup git
+      run: |
+        git config --global user.email "ci@example.com"
+        git config --global user.name "CI Test"
+
+    - name: Create agent from template and run doctor
+      run: |
+        TMPDIR=$(mktemp -d)
+        gptme-agent create "$TMPDIR/test-agent" --template-repo "$GITHUB_WORKSPACE"
+        cd "$TMPDIR/test-agent"
+        WARNING_COUNT=$(gptme-agent doctor 2>&1 | grep -c '^  !' || true)
+        echo "Doctor warnings: $WARNING_COUNT (threshold: ≤5)"
+        if [ "$WARNING_COUNT" -gt 5 ]; then
+          echo "Too many doctor warnings:"
+          gptme-agent doctor
+          exit 1
+        fi
