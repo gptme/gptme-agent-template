@@ -109,7 +109,10 @@ jobs:
     - name: Create agent from template and run doctor
       run: |
         TMPDIR=$(mktemp -d)
-        gptme-agent create "$TMPDIR/test-agent" --template-repo "$GITHUB_WORKSPACE"
+        cp -r "$GITHUB_WORKSPACE/." "$TMPDIR/test-agent"
+        cd "$TMPDIR/test-agent"
+        git init && git add -A && git commit -m "init: fork from template"
+        ./scripts/fork.sh test-agent
         cd "$TMPDIR/test-agent"
         WARNING_COUNT=$(gptme-agent doctor 2>&1 | grep -c '^  !' || true)
         echo "Doctor warnings: $WARNING_COUNT (threshold: ≤5)"
