@@ -85,3 +85,46 @@ jobs:
 
     - name: Run gate tests
       run: uv run --with pytest pytest tests/test_cc_gates.py tests/test_gptme_gates.py -v
+
+  doctor-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install gptme and tools
+      run: |
+        pip install "gptme[server] @ git+https://github.com/gptme/gptme.git@master"
+        pip install uv pre-commit
+
+    - name: Setup git
+      run: |
+        git config --global user.email "ci@example.com"
+        git config --global user.name "CI Test"
+
+    - name: Create agent from template and run doctor
+      run: |
+        TMPDIR=$(mktemp -d)
+        # Copy workspace without .git so we can init a clean repo for fork.sh
+        mkdir -p "$TMPDIR/test-agent"
+        find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -not -name '.git' \
+          -exec cp -r {} "$TMPDIR/test-agent/" \;
+        cd "$TMPDIR/test-agent"
+        git init -b master && git add -A && git commit -m "init: fork from template"
+        ./scripts/fork.sh test-agent
+        # cd into the forked agent (fork.sh creates it as test-agent/ within CWD)
+        cd "$TMPDIR/test-agent/test-agent"
+        pre-commit install
+        WARNING_COUNT=$(gptme-agent doctor 2>&1 | grep -c '^  !' || true)
+        echo "Doctor warnings: $WARNING_COUNT (threshold: ≤7)"
+        if [ "$WARNING_COUNT" -gt 7 ]; then
+          echo "Too many doctor warnings:"
+          gptme-agent doctor
+          exit 1
+        fi
