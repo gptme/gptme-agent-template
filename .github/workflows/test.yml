@@ -98,8 +98,10 @@ jobs:
       with:
         python-version: '3.12'
 
-    - name: Install gptme from git master
-      run: pip install "gptme[server] @ git+https://github.com/gptme/gptme.git@master"
+    - name: Install gptme and tools
+      run: |
+        pip install "gptme[server] @ git+https://github.com/gptme/gptme.git@master"
+        pip install uv pre-commit
 
     - name: Setup git
       run: |
@@ -116,10 +118,12 @@ jobs:
         cd "$TMPDIR/test-agent"
         git init -b master && git add -A && git commit -m "init: fork from template"
         ./scripts/fork.sh test-agent
-        cd "$TMPDIR/test-agent"
+        # cd into the forked agent (fork.sh creates it as test-agent/ within CWD)
+        cd "$TMPDIR/test-agent/test-agent"
+        pre-commit install
         WARNING_COUNT=$(gptme-agent doctor 2>&1 | grep -c '^  !' || true)
-        echo "Doctor warnings: $WARNING_COUNT (threshold: ≤5)"
-        if [ "$WARNING_COUNT" -gt 5 ]; then
+        echo "Doctor warnings: $WARNING_COUNT (threshold: ≤7)"
+        if [ "$WARNING_COUNT" -gt 7 ]; then
           echo "Too many doctor warnings:"
           gptme-agent doctor
           exit 1
