@@ -109,9 +109,12 @@ jobs:
     - name: Create agent from template and run doctor
       run: |
         TMPDIR=$(mktemp -d)
-        cp -r "$GITHUB_WORKSPACE/." "$TMPDIR/test-agent"
+        # Copy workspace without .git so we can init a clean repo for fork.sh
+        mkdir -p "$TMPDIR/test-agent"
+        find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -not -name '.git' \
+          -exec cp -r {} "$TMPDIR/test-agent/" \;
         cd "$TMPDIR/test-agent"
-        git init && git add -A && git commit -m "init: fork from template"
+        git init -b master && git add -A && git commit -m "init: fork from template"
         ./scripts/fork.sh test-agent
         cd "$TMPDIR/test-agent"
         WARNING_COUNT=$(gptme-agent doctor 2>&1 | grep -c '^  !' || true)
