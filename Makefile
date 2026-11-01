@@ -27,7 +27,7 @@ check:  ## Run all pre-commit hooks
 
 test:  ## Run tests (if any exist)
 	@if [ -d tests ] && find tests -name '*.py' -not -name '__*' | grep -q .; then \
-		python3 -m pytest tests/ -v; \
+		uv run --with pytest pytest tests/ -v; \
 	else \
 		echo "No tests found"; \
 	fi
