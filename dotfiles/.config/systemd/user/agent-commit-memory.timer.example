@@ -1,0 +1,13 @@
+[Unit]
+Description=Periodically commit uncommitted agent memory/ files
+Requires=agent-commit-memory.service
+
+[Timer]
+# Sweep every 30 minutes (customize as needed). Memory writes that a session
+# made but never committed are picked up here, so they survive even if the
+# writing session died. Persistent=true runs a missed sweep after downtime.
+OnCalendar=*-*-* *:00,30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
