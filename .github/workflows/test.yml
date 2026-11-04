@@ -143,3 +143,55 @@ jobs:
 
     - name: Run commit-memory tests
       run: bash scripts/test-commit-memory.sh
+
+  # The README quickstart is what a new user actually runs, and it was never in
+  # CI: the `fork` job exercises scripts/fork.sh directly, and `doctor-check`
+  # installs gptme from git master. Both stayed green through the 2026-10-26
+  # walkthrough defects (`make test` needing a preinstalled pytest, #112;
+  # `create` dropping the template's [prompt] table, gptme/gptme#4498). This
+  # job runs the documented sequence against *this commit's* template, so a
+  # regression fails the PR instead of reaching users.
+  onboarding-path:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Install gptme the way the README documents
+      run: |
+        python -m pip install --upgrade pip pipx
+        pipx install gptme
+        # Deliberately the released version that `pipx install gptme` resolves
+        # to. This job exists to catch what users hit; pinning it here would
+        # hide release regressions behind a stale pin.
+        echo "gptme: $(gptme --version)"
+
+    - name: gptme-agent create from this commit
+      run: |
+        gptme-agent create "$RUNNER_TEMP/my-agent" --name MyAgent \
+          --template-repo "file://$GITHUB_WORKSPACE" \
+          --template-branch "${{ github.head_ref || github.ref_name }}"
+
+    - name: Doctor must not warn about prompt auto-includes or context_cmd
+      run: |
+        cd "$RUNNER_TEMP/my-agent"
+        # doctor exits non-zero on warnings alone, so its exit code is not the
+        # signal here -- these two specific absences are.
+        gptme-agent doctor 2>&1 | tee "$RUNNER_TEMP/doctor.txt" || true
+        cat "$RUNNER_TEMP/doctor.txt"
+        fail=0
+        if grep -qF "no [prompt] section" "$RUNNER_TEMP/doctor.txt"; then
+          echo "::error::created workspace has no [prompt] table (auto-includes will not work)"
+          fail=1
+        fi
+        if grep -qF "Context command: not configured" "$RUNNER_TEMP/doctor.txt"; then
+          echo "::error::created workspace has no context_cmd (no dynamic context)"
+          fail=1
+        fi
+        exit $fail
+
+    - name: make test on the created workspace
+      run: |
+        cd "$RUNNER_TEMP/my-agent"
+        make test
