@@ -151,6 +151,13 @@ jobs:
   # `create` dropping the template's [prompt] table, gptme/gptme#4498). This
   # job runs the documented sequence against *this commit's* template, so a
   # regression fails the PR instead of reaching users.
+  #
+  # The config assertion is on gptme.toml structure, not on `doctor` output.
+  # Doctor's printer emits each check's message but never its name, so a
+  # "Context command: not configured" grep cannot match anything -- measured
+  # against gptme 0.36.0 with both defects reintroduced by hand. A structure
+  # assertion is version-independent and is itself covered by
+  # tests/test_check_onboarding_config.py.
   onboarding-path:
     runs-on: ubuntu-latest
     steps:
@@ -182,23 +189,18 @@ jobs:
           --template-repo "file://$GITHUB_WORKSPACE" \
           --template-branch "$TEMPLATE_BRANCH"
 
-    - name: Doctor must not warn about prompt auto-includes or context_cmd
+    - name: Doctor (diagnostics only)
       run: |
         cd "$RUNNER_TEMP/my-agent"
-        # doctor exits non-zero on warnings alone, so its exit code is not the
-        # signal here -- these two specific absences are.
-        gptme-agent doctor 2>&1 | tee "$RUNNER_TEMP/doctor.txt" || true
-        cat "$RUNNER_TEMP/doctor.txt"
-        fail=0
-        if grep -qF "no [prompt] section" "$RUNNER_TEMP/doctor.txt"; then
-          echo "::error::created workspace has no [prompt] table (auto-includes will not work)"
-          fail=1
-        fi
-        if grep -qF "Context command: not configured" "$RUNNER_TEMP/doctor.txt"; then
-          echo "::error::created workspace has no context_cmd (no dynamic context)"
-          fail=1
-        fi
-        exit $fail
+        # Printed for humans, not asserted on: doctor exits non-zero on warnings
+        # alone and prints only each check's *message* (never the check name),
+        # so its output is prose, not a machine-readable signal.
+        gptme-agent doctor || true
+
+    - name: Created workspace kept the template's [prompt] configuration
+      run: |
+        cd "$GITHUB_WORKSPACE"
+        python3 tests/check_onboarding_config.py "$RUNNER_TEMP/my-agent"
 
     - name: make test on the created workspace
       run: |
