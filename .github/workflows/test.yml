@@ -167,11 +167,20 @@ jobs:
         # hide release regressions behind a stale pin.
         echo "gptme: $(gptme --version)"
 
+    - name: Expose the checked-out commit as a branch the clone can see
+      run: |
+        # actions/checkout leaves a detached HEAD, and `git clone --branch` needs
+        # a real ref: without this, create fails with "Remote branch ... not
+        # found in upstream origin". Local only, nothing is pushed.
+        BRANCH="${{ github.head_ref || github.ref_name }}"
+        git -C "$GITHUB_WORKSPACE" branch --force "$BRANCH" HEAD
+        echo "TEMPLATE_BRANCH=$BRANCH" >> "$GITHUB_ENV"
+
     - name: gptme-agent create from this commit
       run: |
         gptme-agent create "$RUNNER_TEMP/my-agent" --name MyAgent \
           --template-repo "file://$GITHUB_WORKSPACE" \
-          --template-branch "${{ github.head_ref || github.ref_name }}"
+          --template-branch "$TEMPLATE_BRANCH"
 
     - name: Doctor must not warn about prompt auto-includes or context_cmd
       run: |
