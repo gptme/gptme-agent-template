@@ -1,21 +1,6 @@
 [agent]
 name = "gptme-agent"
 
-[prompt]
-files = [
-  "README.md",
-  "ARCHITECTURE.md",
-  "ABOUT.md",
-  "SOUL.md",
-  "TASKS.md",
-  "TOOLS.md",
-  "lessons/README.md",
-  "projects/README.md",
-  # "WORKFLOW.md",  # rendered at run time by scripts/workflow-render.py — do not inject raw
-  "gptme.toml"
-]
-context_cmd = "scripts/context.sh"
-
 [lessons]
 # Layered lessons + skills:
 # - lessons/: agent-specific behavioral lessons (agent-specific first)
