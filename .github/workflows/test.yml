@@ -84,7 +84,11 @@ jobs:
       run: pip install uv
 
     - name: Run gate tests
-      run: uv run --with pytest pytest tests/test_cc_gates.py tests/test_gptme_gates.py -v
+      # `test_check_onboarding_config.py` covers the assertion the
+      # onboarding-path job applies to a created workspace; it lives here so
+      # the assertion itself cannot silently rot (the doctor greps it replaced
+      # had been dead code).
+      run: uv run --with pytest pytest tests/test_cc_gates.py tests/test_gptme_gates.py tests/test_check_onboarding_config.py -v
 
   doctor-check:
     runs-on: ubuntu-latest
@@ -143,3 +147,66 @@ jobs:
 
     - name: Run commit-memory tests
       run: bash scripts/test-commit-memory.sh
+
+  # The README quickstart is what a new user actually runs, and it was never in
+  # CI: the `fork` job exercises scripts/fork.sh directly, and `doctor-check`
+  # installs gptme from git master. Both stayed green through the 2026-10-26
+  # walkthrough defects (`make test` needing a preinstalled pytest, #112;
+  # `create` dropping the template's [prompt] table, gptme/gptme#4498). This
+  # job runs the documented sequence against *this commit's* template, so a
+  # regression fails the PR instead of reaching users.
+  #
+  # The config assertion is on gptme.toml structure, not on `doctor` output.
+  # Doctor's printer emits each check's message but never its name, so a
+  # "Context command: not configured" grep cannot match anything -- measured
+  # against gptme 0.36.0 with both defects reintroduced by hand. A structure
+  # assertion is version-independent and is itself covered by
+  # tests/test_check_onboarding_config.py.
+  onboarding-path:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Install gptme the way the README documents
+      run: |
+        python -m pip install --upgrade pip pipx
+        pipx install gptme
+        # Deliberately the released version that `pipx install gptme` resolves
+        # to. This job exists to catch what users hit; pinning it here would
+        # hide release regressions behind a stale pin.
+        echo "gptme: $(gptme --version)"
+
+    - name: Expose the checked-out commit as a branch the clone can see
+      run: |
+        # actions/checkout leaves a detached HEAD, and `git clone --branch` needs
+        # a real ref: without this, create fails with "Remote branch ... not
+        # found in upstream origin". Local only, nothing is pushed.
+        BRANCH="${{ github.head_ref || github.ref_name }}"
+        git -C "$GITHUB_WORKSPACE" branch --force "$BRANCH" HEAD
+        echo "TEMPLATE_BRANCH=$BRANCH" >> "$GITHUB_ENV"
+
+    - name: gptme-agent create from this commit
+      run: |
+        gptme-agent create "$RUNNER_TEMP/my-agent" --name MyAgent \
+          --template-repo "file://$GITHUB_WORKSPACE" \
+          --template-branch "$TEMPLATE_BRANCH"
+
+    - name: Doctor (diagnostics only)
+      run: |
+        cd "$RUNNER_TEMP/my-agent"
+        # Printed for humans, not asserted on: doctor exits non-zero on warnings
+        # alone and prints only each check's *message* (never the check name),
+        # so its output is prose, not a machine-readable signal.
+        gptme-agent doctor || true
+
+    - name: Created workspace kept the template's [prompt] configuration
+      run: |
+        cd "$GITHUB_WORKSPACE"
+        python3 tests/check_onboarding_config.py "$RUNNER_TEMP/my-agent"
+
+    - name: make test on the created workspace
+      run: |
+        cd "$RUNNER_TEMP/my-agent"
+        make test
