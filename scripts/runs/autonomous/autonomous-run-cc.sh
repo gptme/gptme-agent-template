@@ -183,6 +183,67 @@ log "Starting Claude Code session..."
 # (default in the hook is "interactive"; must be set explicitly here).
 export AGENT_SESSION_TYPE=autonomous
 
+# --- Session identity and lineage ---
+# Answers "which session made this commit?" and "what was this session for?".
+# Two separate consumers, which is why the id has to be minted *here*:
+#   - the `prepare-commit-msg` hook in gptme-contrib adds a `Git-Session-Id`
+#     trailer when GIT_COMMITTER_SESSION_ID is set;
+#   - the Stop hook writes a session record keyed by Claude Code's session id.
+# Those only line up if the runner picks the id and tells Claude Code to use it
+# (--session-id), so the trailer on a commit and the record for the session that
+# made it carry the same value. Minting an id without --session-id would produce
+# trailers that match no record, which is worse than no trailer at all.
+# Opt out with AGENT_SESSION_IDENTITY=0 (records and commits stay unlinked).
+SESSION_ID_ARGS=()
+if [ "${AGENT_SESSION_IDENTITY:-1}" = "1" ]; then
+    AGENT_SESSION_ID="${AGENT_SESSION_ID:-$(uuidgen 2>/dev/null || python3 -c 'import uuid; print(uuid.uuid4())')}"
+    if [ -n "$AGENT_SESSION_ID" ]; then
+        export AGENT_SESSION_ID
+        SESSION_ID_ARGS=(--session-id "$AGENT_SESSION_ID")
+
+        # Commit trailers. The hook reads this name; see gptme-contrib
+        # dotfiles/.config/git/hooks/prepare-commit-msg.
+        export GIT_COMMITTER_SESSION_ID="$AGENT_SESSION_ID"
+
+        # Short label, for journals and anything human-facing.
+        export AGENT_SESSION_LABEL="${AGENT_SESSION_LABEL:-${AGENT_SESSION_ID:0:4}}"
+
+        # Dispatch cause: why this session exists. `post_session` reads these
+        # four names from the environment, so exporting them is the whole wiring.
+        if [ -n "${INVOCATION_ID:-}" ]; then
+            export AGENT_DISPATCH_KIND="${AGENT_DISPATCH_KIND:-systemd}"
+            export AGENT_DISPATCH_ID="${AGENT_DISPATCH_ID:-$INVOCATION_ID}"
+        else
+            export AGENT_DISPATCH_KIND="${AGENT_DISPATCH_KIND:-manual}"
+            export AGENT_DISPATCH_ID="${AGENT_DISPATCH_ID:-$$}"
+        fi
+        # AGENT_PARENT_SESSION_ID is deliberately not defaulted: it is set by
+        # whatever launched this run, and inventing a parent would fabricate
+        # lineage. Pass it through untouched when present.
+        # Every value is passed as argv, not interpolated into the script body,
+        # and stderr is not suppressed: a broken builder must be visible rather
+        # than silently yielding an empty cause for every future session.
+        if [ -z "${AGENT_DISPATCH_CAUSE:-}" ]; then
+            export AGENT_DISPATCH_CAUSE
+            AGENT_DISPATCH_CAUSE="$(python3 -c '
+import json, sys
+
+kind, dispatch_id, parent = sys.argv[1:4]
+cause = {"kind": kind, "id": dispatch_id}
+if parent:
+    cause["parent_session_id"] = parent
+print(json.dumps(cause, sort_keys=True))
+' "$AGENT_DISPATCH_KIND" "$AGENT_DISPATCH_ID" "${AGENT_PARENT_SESSION_ID:-}")"
+        fi
+
+        log "Session identity: ${AGENT_SESSION_LABEL} (${AGENT_DISPATCH_KIND})"
+    else
+        log "WARN: could not mint a session id — commits will carry no trailer"
+    fi
+else
+    log "AGENT_SESSION_IDENTITY=0 — skipping session identity wiring"
+fi
+
 # Record the starting commit so the post-session hook can attribute what this
 # session actually shipped (start_commit → end_commit).
 export START_COMMIT
@@ -202,6 +263,7 @@ EXIT_CODE=0
 timeout "$SCRIPT_TIMEOUT" claude -p \
     --dangerously-skip-permissions \
     --model "$MODEL" \
+    "${SESSION_ID_ARGS[@]}" \
     --append-system-prompt-file "$SYSPROMPT_FILE" \
     "$PROMPT" </dev/null || EXIT_CODE=$?
 
