@@ -247,6 +247,20 @@ else
     log "AGENT_SESSION_IDENTITY=0 — skipping session identity wiring"
 fi
 
+# Reserve a unique journal even when identity linking is disabled. Keep an
+# explicitly supplied path, and never truncate an existing entry.
+if [ -z "${AGENT_JOURNAL_PATH:-}" ]; then
+    JOURNAL_DIR="$WORKSPACE/journal/$(date -u +%Y-%m-%d)"
+    mkdir -p "$JOURNAL_DIR"
+    AGENT_JOURNAL_PATH="$(mktemp "$JOURNAL_DIR/autonomous-session-XXXXXXXX.md")"
+fi
+export AGENT_JOURNAL_PATH
+PROMPT+="
+
+## Session journal
+Write this session's journal at this exact reserved path: $AGENT_JOURNAL_PATH
+Append to it; do not replace existing content or choose another filename."
+
 # Record the starting commit so the post-session hook can attribute what this
 # session actually shipped (start_commit → end_commit).
 export START_COMMIT
