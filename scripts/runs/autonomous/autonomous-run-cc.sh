@@ -195,6 +195,9 @@ export AGENT_SESSION_TYPE=autonomous
 # trailers that match no record, which is worse than no trailer at all.
 # Opt out with AGENT_SESSION_IDENTITY=0 (records and commits stay unlinked).
 SESSION_ID_ARGS=()
+# Never attribute this run's commits to a session inherited from its launcher.
+# The enabled path below replaces it with the id actually passed to Claude.
+unset GIT_COMMITTER_SESSION_ID
 if [ "${AGENT_SESSION_IDENTITY:-1}" = "1" ]; then
     AGENT_SESSION_ID="${AGENT_SESSION_ID:-$(uuidgen 2>/dev/null || python3 -c 'import uuid; print(uuid.uuid4())')}"
     if [ -n "$AGENT_SESSION_ID" ]; then

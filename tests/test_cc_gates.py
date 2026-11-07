@@ -8,6 +8,7 @@ in a temporary workspace.
 
 from __future__ import annotations
 
+import json
 import stat
 import subprocess
 from pathlib import Path
@@ -67,6 +68,35 @@ def _run(tmp_path: Path, env_extra: dict[str, str] | None = None) -> int:
         timeout=15,
     )
     return result.returncode
+
+
+def _capture_session(tmp_path: Path, env_extra: dict[str, str]) -> dict:
+    """Capture only the runner's identity contract at the Claude boundary."""
+    _setup_workspace(tmp_path)
+    (tmp_path / "bin" / "claude").write_text(
+        "#!/usr/bin/python3\n"
+        "import json, os, sys\n"
+        "from pathlib import Path\n"
+        "keys = ('AGENT_SESSION_ID', 'GIT_COMMITTER_SESSION_ID', "
+        "'AGENT_JOURNAL_PATH', 'AGENT_SESSION_LABEL', 'AGENT_DISPATCH_CAUSE')\n"
+        "capture = {key: os.environ.get(key) for key in keys}\n"
+        "capture['args'] = sys.argv[1:]\n"
+        "Path(os.environ['HOME'], 'session.json').write_text(json.dumps(capture))\n"
+    )
+    assert _run(tmp_path, env_extra) == 0
+    return json.loads((tmp_path / "session.json").read_text())
+
+
+def test_identity_opt_out_clears_inherited_commit_trailer(tmp_path: Path) -> None:
+    captured = _capture_session(
+        tmp_path,
+        {
+            "AGENT_SESSION_IDENTITY": "0",
+            "GIT_COMMITTER_SESSION_ID": "11111111-1111-4111-8111-111111111111",
+        },
+    )
+    assert "--session-id" not in captured["args"]
+    assert captured["GIT_COMMITTER_SESSION_ID"] is None
 
 
 def test_force_session_bypasses_gates(tmp_path: Path) -> None:
