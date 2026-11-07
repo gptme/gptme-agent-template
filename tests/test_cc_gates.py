@@ -8,6 +8,7 @@ in a temporary workspace.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import stat
 import subprocess
@@ -26,13 +27,18 @@ def _setup_workspace(tmp_path: Path) -> None:
     """Scaffold a minimal workspace so the runner resolves correctly.
 
     The runner computes WORKSPACE as three directories above its own location
-    ($0 → dirname → ../../..). We symlink the real runner into the expected
-    place inside tmp_path so WORKSPACE == tmp_path.
+    ($0 → dirname → ../../..). Copy the runner into the expected place inside
+    tmp_path, customizing its agent name so each test has a private lock.
     """
     # Place runner at the depth the script expects
     scripts_dir = tmp_path / "scripts" / "runs" / "autonomous"
     scripts_dir.mkdir(parents=True)
-    (scripts_dir / "autonomous-run-cc.sh").symlink_to(RUNNER)
+    agent_name = "TestAgent" + hashlib.sha256(str(tmp_path).encode()).hexdigest()[:16]
+    (scripts_dir / "autonomous-run-cc.sh").write_text(
+        RUNNER.read_text().replace(
+            'AGENT_NAME="YourAgent"', f'AGENT_NAME="{agent_name}"'
+        )
+    )
 
     # Stub executables: git and claude must exit 0 for non-gate tests
     bin_dir = tmp_path / "bin"
