@@ -28,6 +28,12 @@ Environment (all optional):
   AGENT_RECOMMENDED_CATEGORY  Category the session was launched for (bandit input).
   START_COMMIT              HEAD before the session (set by the run script);
                             end_commit is resolved from HEAD when the session stops.
+  AGENT_JOURNAL_PATH        Journal file this session owns, so the record points at
+                            the write-up instead of leaving it to be guessed later.
+  AGENT_SESSION_LABEL       Short human-facing label for the session (e.g. "4f21").
+  AGENT_PARENT_SESSION_ID / AGENT_DISPATCH_KIND / AGENT_DISPATCH_ID /
+  AGENT_DISPATCH_CAUSE      Lineage, read by `post_session` itself — the runners
+                            export them; this hook does not need to forward them.
 """
 
 from __future__ import annotations
@@ -135,6 +141,8 @@ def main() -> None:
 
     session_type = os.environ.get("AGENT_SESSION_TYPE") or "interactive"
     recommended_category = os.environ.get("AGENT_RECOMMENDED_CATEGORY") or None
+    journal_path = os.environ.get("AGENT_JOURNAL_PATH") or None
+    session_label = os.environ.get("AGENT_SESSION_LABEL") or None
 
     # Commit tracking: START_COMMIT is set by the run script before the session;
     # end_commit is the current HEAD when the session stops.
@@ -169,7 +177,7 @@ def main() -> None:
         # Always process — a later Stop event has the final transcript with
         # accurate duration, outcome, and deliverables. Let the session store
         # (or downstream dedup by session_id) handle overwriting earlier records.
-        result = post_session(
+        kwargs = dict(
             store=store,
             harness="claude-code",
             model=model,
@@ -179,7 +187,21 @@ def main() -> None:
             session_id=session_id,
             start_commit=start_commit,
             end_commit=end_commit,
+            journal_path=journal_path,
+            session_label=session_label,
         )
+        # The pinned gptme-sessions may predate a kwarg (the submodule pin and the
+        # uv-tool install can both lag). Drop what this build cannot accept rather
+        # than losing the whole record to a TypeError.
+        import inspect
+
+        accepted = inspect.signature(post_session).parameters
+        dropped = sorted(k for k in kwargs if k not in accepted)
+        if dropped:
+            log(f"gptme_sessions too old for: {', '.join(dropped)} — omitting")
+            kwargs = {k: v for k, v in kwargs.items() if k in accepted}
+
+        result = post_session(**kwargs)
         log(
             f"appended session {session_id[:8]}: "
             f"outcome={result.record.outcome} "
