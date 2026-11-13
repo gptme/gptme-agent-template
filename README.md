@@ -82,17 +82,26 @@ cd ~/my-agent
 # Verify the workspace is healthy (optional but recommended)
 gptme-agent doctor
 
+# Pick how inference is authenticated (one-time; `gptme "hello"` fails without it)
+gptme-onboard
+
 # Run the agent interactively
 gptme "hello"
 ```
+
+`gptme-onboard` walks through a subscription login or an API key. To skip the wizard, run
+`gptme-auth openai-subscription` or export `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or
+`OPENROUTER_API_KEY`. With no provider configured, `gptme "hello"` stops immediately with
+`No provider configured, couldn't auto-detect model` and these same options.
 
 The agent's context is automatically loaded via `gptme.toml` which configures the files and context command to include.
 
 #### Verified end-to-end
 
-This quickstart was executed end-to-end against gptme 0.33.0 on 2026-09-18. The
-`gptme-agent create` step clones the template, customizes the agent name, and
-leaves a ready-to-run workspace:
+This quickstart was executed end-to-end against gptme 0.33.0 on 2026-09-18; the
+`create` and `doctor` steps were re-run against gptme 0.36.0 on 2026-11-08 (counts
+below). The `gptme-agent create` step clones the template, customizes the agent
+name, and leaves a ready-to-run workspace:
 
 ```text
 🚀 Creating agent workspace: /tmp/qs-test-agent
@@ -106,17 +115,20 @@ leaves a ready-to-run workspace:
 ✅ Workspace created!
 ```
 
-`gptme-agent doctor` confirms the workspace is ready (23 checks passed, 7
-warnings, 1 error — the error is the missing `origin` remote on a fresh clone,
-which is expected until you create a GitHub repository, add it as `origin`
-(`git remote add origin git@github.com:YOU/my-agent.git`), and push):
+`gptme-agent doctor` confirms the workspace is ready. On gptme 0.36.0 with only
+`git`, `gh` and `python3` on `PATH` it exits 0 with no errors; the warnings are
+optional items: no `origin` remote yet (add one with
+`git remote add origin git@github.com:YOU/my-agent.git` when you create a GitHub
+repository), git hooks not installed, `uv`/`prek`/`pre-commit` not found, no
+`skills/` directory, and lesson-format advisories. The count varies with which
+optional tools you have installed:
 
 ```text
-Summary: 23 passed, 7 warnings, 1 errors
+Summary: 22 passed, 9 warnings
 ```
 
-And `gptme "hello"` loads the agent's context and completes a turn (output
-abridged — the assistant reply appears between the lesson header and the session
+Once a provider is configured, `gptme "hello"` loads the agent's context and completes a turn
+(transcript from the 0.33.0 run, output abridged — the assistant reply appears between the lesson header and the session
 stats):
 
 ```text
