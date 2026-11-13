@@ -88,7 +88,7 @@ jobs:
       # onboarding-path job applies to a created workspace; it lives here so
       # the assertion itself cannot silently rot (the doctor greps it replaced
       # had been dead code).
-      run: uv run --with pytest pytest tests/test_cc_gates.py tests/test_gptme_gates.py tests/test_check_onboarding_config.py -v
+      run: uv run --with pytest pytest tests/test_cc_gates.py tests/test_gptme_gates.py tests/test_check_onboarding_config.py tests/test_onboarding_checkout.py -v
 
   doctor-check:
     runs-on: ubuntu-latest
@@ -180,10 +180,10 @@ jobs:
 
     - name: Expose the checked-out commit as a branch the clone can see
       run: |
-        # actions/checkout leaves a detached HEAD, and `git clone --branch` needs
-        # a real ref: without this, create fails with "Remote branch ... not
-        # found in upstream origin". Local only, nothing is pushed.
-        BRANCH="${{ github.head_ref || github.ref_name }}"
+        # PR checkouts are detached, while push checkouts already occupy the
+        # event branch. Expose HEAD under a separate local ref so clone can find
+        # it without trying to force-update the checked-out branch. Nothing is pushed.
+        BRANCH="onboarding-template-$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)"
         git -C "$GITHUB_WORKSPACE" branch --force "$BRANCH" HEAD
         echo "TEMPLATE_BRANCH=$BRANCH" >> "$GITHUB_ENV"
 
