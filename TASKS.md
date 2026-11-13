@@ -20,7 +20,7 @@ gptodo answers the question an agent asks at the start of every session: *what s
 Where this workspace uses it:
 
 - `scripts/context.sh` includes the output of `gptodo status --compact` in every session's context (it prints an install hint instead if gptodo is missing).
-- The `validate-task-metadata` pre-commit hook runs `gptodo check` (skipped if gptodo is missing).
+- The `validate-task-frontmatter` pre-commit hook runs the pinned contrib package's `gptodo lint` on the task filenames supplied by pre-commit (see [Task Validation](#task-validation)). It does not require a globally installed gptodo.
 - [`WORKFLOW.md`](./WORKFLOW.md) selects work with `gptodo ready`.
 
 **Installation**:
@@ -206,16 +206,19 @@ Additional notes, context, or documentation...
 
 Tasks are validated using pre-commit hooks:
 
-1. `validate-task-frontmatter` checks required fields and allowed values (states, priorities, task types).
-2. `validate-task-metadata` runs `gptodo check` for broken references and unparseable frontmatter (skipped if gptodo is not installed).
-3. Markdown link checks cover internal links in task files.
+1. `validate-task-frontmatter` runs `uv run --no-project --with ./gptme-contrib/packages/gptodo gptodo lint` on the task filenames supplied by pre-commit. It checks required fields, allowed values and malformed YAML using the pinned gptodo schema. Normal commits validate changed task files, not unrelated unstaged tasks; `prek run --all-files` validates all matching tracked task files. The hook covers top-level tasks and `tasks/archive/`, excluding task templates and other nested directories.
+2. Markdown link checks cover internal links in task files.
+
+The task hook requires `uv` and an initialized contrib submodule (`git submodule update --init --recursive`). `uv` installs gptodo and its dependencies from that local pin into an isolated environment; initial setup may need network access to fetch dependencies. Missing setup fails the hook instead of silently skipping validation. A global gptodo installation does not select the hook's version.
+
+Run `gptodo check` separately for workspace-wide integrity checks such as broken task references; the staged-file hook does not replace that audit.
 
 ## Using a different task tracker
 
 gptodo is one well-integrated option, not a requirement. You can track work in GitHub Issues, Linear, a single `TODO.md`, or anything else. To swap it out:
 
 1. **Context**: `scripts/context.sh` is a symlink into the gptme-contrib submodule that runs `gptodo status --compact`. Replace the symlink with your own script, or point `context_cmd` in [`gptme.toml`](./gptme.toml) at one, that prints your open work.
-2. **Pre-commit**: remove or replace the `validate-task-frontmatter` and `validate-task-metadata` hooks in `.pre-commit-config.yaml` if you no longer keep tasks in `tasks/`.
+2. **Pre-commit**: remove or replace the single `validate-task-frontmatter` hook in `.pre-commit-config.yaml` if you no longer keep tasks in `tasks/`. Leaving it enabled retains the `uv` and pinned gptodo setup requirements described above, even if you do not install the global CLI.
 3. **Workflow**: update the `tracker` block and the Phase 2 selection commands in [`WORKFLOW.md`](./WORKFLOW.md), and the task-selection steps in the prompts inside `scripts/runs/autonomous/autonomous-run.sh` and `autonomous-run-cc.sh`.
 4. **Docs the agent reads**: this file and [`TOOLS.md`](./TOOLS.md) are included in every session via `gptme.toml`, and [`AGENTS.md`](./AGENTS.md) is read by other harnesses. Rewrite their task sections so the agent calls your tool instead of `gptodo`.
 
