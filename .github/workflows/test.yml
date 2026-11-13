@@ -88,7 +88,7 @@ jobs:
       # onboarding-path job applies to a created workspace; it lives here so
       # the assertion itself cannot silently rot (the doctor greps it replaced
       # had been dead code).
-      run: uv run --with pytest pytest tests/test_cc_gates.py tests/test_gptme_gates.py tests/test_check_onboarding_config.py tests/test_onboarding_checkout.py -v
+      run: uv run --with pytest --with pyyaml pytest tests/test_cc_gates.py tests/test_gptme_gates.py tests/test_check_onboarding_config.py tests/test_onboarding_checkout.py tests/test_task_schema_hook.py -v
 
   doctor-check:
     runs-on: ubuntu-latest

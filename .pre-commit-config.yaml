@@ -24,7 +24,7 @@ repos:
     rev: v1.12.0
     hooks:
       - id: mypy
-        additional_dependencies: [types-tabulate, types-docutils]
+        additional_dependencies: [types-tabulate, types-docutils, types-PyYAML]
         args: [--ignore-missing-imports, --check-untyped-defs]
   - repo: https://github.com/gptme/gptme-contrib
     rev: 13d63e63b35705bc16646ed4b0964dcfa176bc43  # gptme/gptme-contrib#1520
@@ -59,17 +59,11 @@ repos:
         # Exclude lesson files - they need to show anti-patterns
         exclude: ^lessons/.*$
       - id: validate-task-frontmatter
-        name: Validate task frontmatter
-        description: Validates YAML frontmatter in task files
-        entry: ./gptme-contrib/scripts/precommit/validate_task_frontmatter.py
+        name: Lint staged task frontmatter (gptodo)
+        description: One schema from the pinned gptodo; validates only the passed task files
+        entry: uv run --no-project --with ./gptme-contrib/packages/gptodo gptodo lint
         language: system
         types: [markdown]
         files: ^tasks/(archive/)?[^/]+\.md$
         exclude: ^tasks/(templates|video-scripts|agent-setup-interview)/
         pass_filenames: true
-      - id: validate-task-metadata
-        name: Validate task metadata
-        entry: bash -c 'if command -v gptodo &> /dev/null; then gptodo check; else echo "gptodo not installed (optional) - skipping validation"; fi'
-        language: system
-        types: [markdown]
-        files: ^tasks/.*\.md$
