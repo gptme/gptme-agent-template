@@ -146,6 +146,25 @@ When hello works, run the [first-task walkthrough](./docs/first-task-walkthrough
 a two-file failing pytest, `gptme -n`, and a captured before/after from a
 fresh directory.
 
+### Demo
+
+A recorded `fork.sh` plus `gptme-agent doctor` run from a scrubbed environment
+(no host paths, no keys). GitHub cannot play a raw `.cast`, so the README
+embeds the rendered GIF; replay locally with `asciinema play`.
+
+![Fork the template and run gptme-agent doctor](./docs/fork-and-doctor.gif)
+
+Caption: `./scripts/fork.sh --minimal --no-dotfiles /tmp/demo-agent Demo`, then
+`gptme-agent doctor /tmp/demo-agent`. 21 checks passed (warnings are optional
+tools not on `PATH`). Recording: [`docs/fork-and-doctor.cast`](./docs/fork-and-doctor.cast).
+
+```sh
+asciinema play docs/fork-and-doctor.cast
+```
+
+The recommended path for newcomers is still `gptme-agent create` above; this
+recording shows the equivalent manual fork plus the workspace health check.
+
 ### One Agent, Multiple Runtimes
 
 **Your agent is the workspace, not the harness.** Identity, memory, tasks,
