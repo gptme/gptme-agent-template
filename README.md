@@ -155,8 +155,9 @@ embeds the rendered GIF; replay locally with `asciinema play`.
 ![Fork the template and run gptme-agent doctor](./docs/fork-and-doctor.gif)
 
 Caption: `./scripts/fork.sh --minimal --no-dotfiles /tmp/demo-agent Demo`, then
-`gptme-agent doctor /tmp/demo-agent`. 21 checks passed (warnings are optional
-tools not on `PATH`). Recording: [`docs/fork-and-doctor.cast`](./docs/fork-and-doctor.cast).
+`gptme-agent doctor /tmp/demo-agent`. 21 checks passed, with 10 warnings about
+missing optional tools, workspace setup, and lesson formatting.
+Recording: [`docs/fork-and-doctor.cast`](./docs/fork-and-doctor.cast).
 
 ```sh
 asciinema play docs/fork-and-doctor.cast
