@@ -84,6 +84,16 @@ if $all_files_exist; then
     log_pass "All required files present"
 fi
 
+# Test 3b: Template-only README demo media is not copied into forks
+log_test "Template README demo media is excluded from forks"
+if [[ -e docs/fork-and-doctor.gif || -e docs/fork-and-doctor.cast ]]; then
+    log_fail "Fork copied template-only demo media into docs/"
+elif grep -q "### Demo" README.md; then
+    log_fail "Forked README still contains the template-only Demo heading"
+else
+    log_pass "Demo GIF/cast and heading excluded from fork"
+fi
+
 # Test 4: Agent name substitution worked
 log_test "Agent name substitution in gptme.toml"
 if grep -q 'name = "testagent"' gptme.toml; then

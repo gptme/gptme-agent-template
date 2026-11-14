@@ -188,6 +188,10 @@ function copy_file() {
 
     # Process all files, whether dst is a file or directory
     find "$dst" -type f -print0 | while IFS= read -r -d '' file; do
+        # Binary media is copied as-is; perl -i would corrupt it.
+        case "$file" in
+            *.gif|*.cast|*.png|*.jpg|*.jpeg|*.webp|*.pdf) continue ;;
+        esac
         # Strip template sections FIRST (before name replacement)
         # This prevents replacing "gptme-agent" in template-only content
         # (e.g. CLI tool references like "gptme-agent create" that should not be renamed)
@@ -214,6 +218,9 @@ copy_file README.md
 # The README links to docs/operating-an-agent.md; copy the docs directory too
 # so the link resolves in forked workspaces.
 copy_file docs
+# Template-only README demo (GIF + .cast) — the Demo heading is inside
+# <!--template--> so it is stripped from the forked README; drop the media too.
+rm -f "${TARGET_DIR}/docs/fork-and-doctor.gif" "${TARGET_DIR}/docs/fork-and-doctor.cast"
 cp "${SOURCE_DIR}/Makefile" "${TARGET_DIR}/Makefile"  # copy without replacing NAME_TEMPLATE
 copy_file ABOUT.md
 copy_file SOUL.md
