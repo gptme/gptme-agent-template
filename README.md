@@ -1,9 +1,9 @@
 # gptme-agent-template
 
-[![built using gptme](https://img.shields.io/badge/built%20using-gptme%20%F0%9F%A4%96-5151f5?style=flat)](https://github.com/ErikBjare/gptme)
+[![built using gptme](https://img.shields.io/badge/built%20using-gptme%20%F0%9F%A4%96-5151f5?style=flat)](https://github.com/gptme/gptme)
 <!--template-->
 
-[![Test](https://github.com/ErikBjare/gptme-agent-template/actions/workflows/test.yml/badge.svg)](https://github.com/ErikBjare/gptme-agent-template/actions/workflows/test.yml)
+[![Test](https://github.com/gptme/gptme-agent-template/actions/workflows/test.yml/badge.svg)](https://github.com/gptme/gptme-agent-template/actions/workflows/test.yml)
 
 > [!NOTE]
 > This is a template for a [gptme](https://gptme.org)-based agent. See the [agents documentation](https://gptme.org/docs/agents.html) for more information about gptme agents and how they work.
@@ -50,7 +50,7 @@ Before forking or using this template, ensure you have the required dependencies
 | Dependency | Purpose | Installation |
 |------------|---------|--------------|
 | `git` | Version control | Package manager |
-| `python3` | Python 3.10+ runtime | Package manager |
+| `python3` | Python 3.11.5+ runtime (required by gptme) | Package manager |
 | `pipx` | Python CLI tool installer | `python3 -m pip install --user pipx` |
 | `uv` | Fast Python package manager | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | `gptme` | Agent framework | `pipx install gptme` |
