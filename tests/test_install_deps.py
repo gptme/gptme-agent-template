@@ -32,7 +32,19 @@ def _run_with_python(
         f'exec "{sys.executable}" -I -c "import sys; sys.version_info = {version!r}; exec(sys.argv[1])" "${{@:2}}"\n'
     )
     fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
-    env = {**os.environ, "PATH": f"{bindir}:{os.environ['PATH']}", "NO_COLOR": "1"}
+    # Isolate HOME/CLAUDE_HOME/WORKSPACE: the script ends by running
+    # setup-memory.sh, which must never see (or relocate) the developer's real
+    # Claude Code memory directory.
+    home = tmp_path / "home"
+    home.mkdir()
+    env = {
+        **os.environ,
+        "PATH": f"{bindir}:{os.environ['PATH']}",
+        "NO_COLOR": "1",
+        "HOME": str(home),
+        "CLAUDE_HOME": str(home / ".claude"),
+        "WORKSPACE": str(tmp_path / "workspace"),
+    }
     return subprocess.run(
         ["bash", str(SCRIPT)],
         capture_output=True,
