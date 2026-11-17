@@ -53,6 +53,8 @@ Every agent message you handle ends in exactly one of `reply` or `ack`. Deciding
 
 Subjects that never owe a reply (a market feed, a daily digest) belong in `messages/no-reply-subject-patterns`: one case-insensitive regex per line, `# ` comments allowed. `pending` reads that file on every call, so every caller (a timer, an inbox watcher, an interactive session) applies the same policy. Prefer it over the `AGENT_MSG_NO_REPLY_SUBJECT_PATTERNS` environment variable, which only reaches the process tree of the service that sets it. If your `.gitignore` excludes `messages/*`, add `!messages/no-reply-subject-patterns` so the policy is tracked.
 
+To start a session when a message arrives instead of waiting for the next scheduled run, see [scripts/runs/agent-msg/](scripts/runs/agent-msg/README.md): an inbox-only systemd path unit, a 3 s debounce, a 2-minute retry timer and a one-slot pickup script.
+
 Install: `uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptmail`
 
 ## Search & Navigation

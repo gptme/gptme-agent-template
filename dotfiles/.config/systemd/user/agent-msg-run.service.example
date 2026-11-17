@@ -1,0 +1,20 @@
+[Unit]
+Description=Agent inbox pickup (one bounded session for pending messages)
+After=network.target
+
+[Service]
+# Oneshot: systemd never runs two copies at once, and the script holds its own
+# lock so a session started by hand also counts as the one slot.
+Type=oneshot
+WorkingDirectory=/path/to/your/workspace
+# Node/nvm PATH: adjust to your installation (dirname $(which node)). gptmail
+# must be on this PATH too.
+Environment="PATH=/home/youruser/.nvm/versions/node/v24.13.1/bin:/home/youruser/.local/bin:/usr/local/bin:/usr/bin:/bin"
+# Debounce: a multi-file SCP, or the read/replied edit a handler makes, lands
+# within a second or two. Wait, then scan once.
+ExecStartPre=/usr/bin/sleep 3
+ExecStart=/path/to/your/workspace/scripts/runs/agent-msg/agent-msg-run.sh
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=1500
+MemoryMax=4G

@@ -1,0 +1,19 @@
+[Unit]
+Description=Wake agent-message pickup when a message arrives in the inbox
+
+[Path]
+# Watch the inbox directory ONLY, not messages/ or the workspace root. Other
+# writes under messages/ (outbox, no-reply-subject-patterns) would wake the unit
+# for nothing. Change the path to your workspace.
+# PathChanged fires when a writer closes the file (including the atomic rename
+# gptmail uses), and again for the first read/replied edit made while handling
+# the message. It is edge-triggered: messages that are already pending do not
+# re-trigger it, so a pending message never turns this into a busy loop.
+PathChanged=%h/your-workspace/messages/inbox
+Unit=agent-msg-run.service
+# A burst larger than this would trip the unit's start limit and stop the path.
+TriggerLimitIntervalSec=60
+TriggerLimitBurst=100
+
+[Install]
+WantedBy=default.target
