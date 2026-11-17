@@ -2,6 +2,8 @@
 """Post-session hook: record session metrics to gptme-sessions.
 
 Claude Code `Stop` hook — fires when a session ends (user exits or /stop).
+The gptme runner (autonomous-run.sh) also pipes it a synthesized Stop payload
+with `"harness": "gptme"`, since gptme has no equivalent hook.
 Reads `transcript_path` from the hook input, runs `post_session()` to extract
 productivity metrics, and appends a session record to `state/sessions/`.
 
@@ -134,6 +136,9 @@ def main() -> None:
     transcript_path = hook_input.get("transcript_path", "")
     session_id = hook_input.get("session_id", "unknown")
     model = hook_input.get("model", "unknown")
+    # Claude Code's Stop payload has no harness field. The gptme runner, which
+    # has no Stop hook, feeds this script a synthesized payload naming its own.
+    harness = hook_input.get("harness") or "claude-code"
 
     if not transcript_path or not Path(transcript_path).is_file():
         log(f"no transcript at {transcript_path!r}, skipping")
@@ -179,7 +184,7 @@ def main() -> None:
         # (or downstream dedup by session_id) handle overwriting earlier records.
         kwargs = dict(
             store=store,
-            harness="claude-code",
+            harness=harness,
             model=model,
             run_type=session_type,
             trajectory_path=Path(transcript_path),

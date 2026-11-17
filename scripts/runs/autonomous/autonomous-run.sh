@@ -204,10 +204,96 @@ Keep documentation BRIEF (2-5 min max):
 Begin your autonomous work session now.
 EOF
 
+# --- Session identity and lineage ---
+# Same contract as autonomous-run-cc.sh: the `Git-Session-Id` trailer on a
+# commit and the session record for the run that made it must carry the same
+# value. gptme has no --session-id; its conversation id is --name, which also
+# names the log directory holding the trajectory. So the runner mints one id,
+# uses it as the conversation name, exports it as the trailer, and records the
+# session under it after gptme exits (gptme has no Stop hook to do that).
+# Opt out with AGENT_SESSION_IDENTITY=0 (records and commits stay unlinked).
+GPTME_NAME_ARGS=()
+# Never attribute this run's commits to a session inherited from its launcher.
+unset GIT_COMMITTER_SESSION_ID
+if [ "${AGENT_SESSION_IDENTITY:-1}" = "1" ]; then
+    AGENT_SESSION_ID="${AGENT_SESSION_ID:-$(uuidgen 2>/dev/null || python3 -c 'import uuid; print(uuid.uuid4())')}"
+    if [ -n "$AGENT_SESSION_ID" ]; then
+        export AGENT_SESSION_ID
+        GPTME_NAME_ARGS=(--name "$AGENT_SESSION_ID")
+        export GIT_COMMITTER_SESSION_ID="$AGENT_SESSION_ID"
+        export AGENT_SESSION_LABEL="${AGENT_SESSION_LABEL:-${AGENT_SESSION_ID:0:4}}"
+        # Dispatch cause: `post_session` reads these names from the environment.
+        if [ -n "${INVOCATION_ID:-}" ]; then
+            export AGENT_DISPATCH_KIND="${AGENT_DISPATCH_KIND:-systemd}"
+            export AGENT_DISPATCH_ID="${AGENT_DISPATCH_ID:-$INVOCATION_ID}"
+        else
+            export AGENT_DISPATCH_KIND="${AGENT_DISPATCH_KIND:-manual}"
+            export AGENT_DISPATCH_ID="${AGENT_DISPATCH_ID:-$$}"
+        fi
+        # AGENT_PARENT_SESSION_ID is passed through, never defaulted: inventing
+        # a parent would fabricate lineage.
+        if [ -z "${AGENT_DISPATCH_CAUSE:-}" ]; then
+            export AGENT_DISPATCH_CAUSE
+            AGENT_DISPATCH_CAUSE="$(python3 -c '
+import json, sys
+
+kind, dispatch_id, parent = sys.argv[1:4]
+cause = {"kind": kind, "id": dispatch_id}
+if parent:
+    cause["parent_session_id"] = parent
+print(json.dumps(cause, sort_keys=True))
+' "$AGENT_DISPATCH_KIND" "$AGENT_DISPATCH_ID" "${AGENT_PARENT_SESSION_ID:-}")"
+        fi
+        log "Session identity: ${AGENT_SESSION_LABEL} (${AGENT_DISPATCH_KIND})"
+    else
+        log "WARN: could not mint a session id — commits will carry no trailer"
+    fi
+else
+    log "AGENT_SESSION_IDENTITY=0 — skipping session identity wiring"
+fi
+export AGENT_SESSION_TYPE="${AGENT_SESSION_TYPE:-autonomous}"
+export START_COMMIT
+START_COMMIT="$(git rev-parse HEAD 2>/dev/null || true)"
+
+# Record the session under AGENT_SESSION_ID via the shared post-session hook,
+# pointing it at gptme's trajectory for the conversation named above. Searches
+# gptme's log roots for that exact name; the id is a fresh UUID, so a match is
+# this run's log. Never fails the run: a missing hook, log, or gptme-sessions
+# only costs the record.
+record_session() {
+    [ -n "${AGENT_SESSION_ID:-}" ] && [ "${#GPTME_NAME_ARGS[@]}" -gt 0 ] || return 0
+    local hook="$WORKSPACE/.claude/hooks/post-session.py"
+    [ -f "$hook" ] || { log "post-session hook not found — no session record"; return 0; }
+    local root transcript=""
+    for root in "${GPTME_LOGS_HOME:-}" "${XDG_DATA_HOME:+$XDG_DATA_HOME/gptme/logs}" \
+        "$HOME/.local/share/gptme/logs" "$HOME/Library/Application Support/gptme/logs"; do
+        if [ -n "$root" ] && [ -f "$root/$AGENT_SESSION_ID/conversation.jsonl" ]; then
+            transcript="$root/$AGENT_SESSION_ID/conversation.jsonl"
+            break
+        fi
+    done
+    if [ -z "$transcript" ]; then
+        log "WARN: no gptme log for conversation $AGENT_SESSION_ID — no session record"
+        return 0
+    fi
+    python3 -c '
+import json, sys
+
+session_id, transcript = sys.argv[1:3]
+print(json.dumps({
+    "hook_event_name": "Stop",
+    "harness": "gptme",
+    "session_id": session_id,
+    "transcript_path": transcript,
+}))
+' "$AGENT_SESSION_ID" "$transcript" | python3 "$hook" || true
+}
+
 # Run gptme with the autonomous prompt (with timeout)
 log "Starting gptme session..."
-timeout "$SCRIPT_TIMEOUT" gptme --non-interactive "$PROMPT_FILE" 2>&1 || EXIT_CODE=$?
+timeout "$SCRIPT_TIMEOUT" gptme --non-interactive "${GPTME_NAME_ARGS[@]}" "$PROMPT_FILE" 2>&1 || EXIT_CODE=$?
 EXIT_CODE=${EXIT_CODE:-0}
+record_session
 
 # Check exit status
 if [ "$EXIT_CODE" -eq 0 ]; then

@@ -7,8 +7,10 @@ stubbed so the script can run to completion in a temporary workspace.
 
 from __future__ import annotations
 
+import json
 import os
 import pty
+import shutil
 import stat
 import subprocess
 from pathlib import Path
@@ -20,6 +22,7 @@ RUNNER = (
     / "autonomous"
     / "autonomous-run.sh"
 )
+HOOK = Path(__file__).resolve().parents[1] / ".claude" / "hooks" / "post-session.py"
 
 
 def _setup_workspace(tmp_path: Path) -> Path:
@@ -171,3 +174,93 @@ def test_session_gate_error_fails_open(tmp_path: Path) -> None:
     assert result.returncode == 0
     assert "failing open" in result.stdout
     assert marker.exists()
+
+
+def _capture_identity(tmp_path: Path, env_extra: dict[str, str]) -> dict:
+    """Run with a gptme stub that records its argv/env and writes a log.
+
+    The stub writes conversation.jsonl under the default gptme log root, named
+    by --name, as real gptme does; the real post-session hook is installed and
+    a fake gptme_sessions captures what it would record.
+    """
+    _setup_workspace(tmp_path)
+    (tmp_path / "bin" / "gptme").write_text(
+        "#!/usr/bin/python3\n"
+        "import json, os, sys\n"
+        "from pathlib import Path\n"
+        "args = sys.argv[1:]\n"
+        "keys = ('AGENT_SESSION_ID', 'GIT_COMMITTER_SESSION_ID', "
+        "'AGENT_SESSION_LABEL', 'AGENT_DISPATCH_CAUSE')\n"
+        "capture = {key: os.environ.get(key) for key in keys}\n"
+        "capture['args'] = args\n"
+        "home = Path(os.environ['HOME'])\n"
+        "(home / 'gptme.json').write_text(json.dumps(capture))\n"
+        "if '--name' in args:\n"
+        "    log = home / '.local/share/gptme/logs' / args[args.index('--name') + 1]\n"
+        "    log.mkdir(parents=True)\n"
+        "    (log / 'conversation.jsonl').write_text('{}\\n')\n"
+    )
+    hooks = tmp_path / ".claude" / "hooks"
+    hooks.mkdir(parents=True)
+    shutil.copy(HOOK, hooks / "post-session.py")
+    fake = tmp_path / "fake-sessions" / "gptme_sessions"
+    fake.mkdir(parents=True)
+    (fake / "__init__.py").write_text(
+        "import json, os\n"
+        "from pathlib import Path\n"
+        "class SessionStore:\n"
+        "    def __init__(self, *a, **k): pass\n"
+        "def post_session(*, store, harness, session_id, trajectory_path, "
+        "model=None, **rest):\n"
+        "    record = {'harness': harness, 'session_id': session_id, "
+        "'trajectory_path': str(trajectory_path)}\n"
+        "    Path(os.environ['HOME'], 'record.json').write_text(json.dumps(record))\n"
+        "    raise RuntimeError('captured')  # hook logs it and exits 0\n"
+    )
+    env = {"PYTHONPATH": str(fake.parent), "FORCE_SESSION": "1", **env_extra}
+    result = _run(tmp_path, env)
+    assert result.returncode == 0, result.stdout + result.stderr
+    captured = json.loads((tmp_path / "gptme.json").read_text())
+    record = tmp_path / "record.json"
+    captured["record"] = json.loads(record.read_text()) if record.exists() else None
+    return captured
+
+
+def test_identity_links_conversation_trailer_and_record(tmp_path: Path) -> None:
+    """One id names the gptme conversation, the commit trailer and the record."""
+    captured = _capture_identity(tmp_path, {})
+    args = captured["args"]
+    session_id = captured["AGENT_SESSION_ID"]
+    assert session_id
+    assert args[args.index("--name") + 1] == session_id
+    assert captured["GIT_COMMITTER_SESSION_ID"] == session_id
+    assert captured["AGENT_SESSION_LABEL"] == session_id[:4]
+    assert json.loads(captured["AGENT_DISPATCH_CAUSE"])["kind"] == "manual"
+
+    record = captured["record"]
+    assert record is not None
+    assert record["harness"] == "gptme"
+    assert record["session_id"] == session_id
+    assert record["trajectory_path"] == str(
+        tmp_path / ".local/share/gptme/logs" / session_id / "conversation.jsonl"
+    )
+
+
+def test_identity_opt_out_clears_inherited_trailer(tmp_path: Path) -> None:
+    """AGENT_SESSION_IDENTITY=0: no --name, no inherited trailer, no record."""
+    captured = _capture_identity(
+        tmp_path,
+        {
+            "AGENT_SESSION_IDENTITY": "0",
+            "GIT_COMMITTER_SESSION_ID": "11111111-1111-4111-8111-111111111111",
+        },
+    )
+    assert "--name" not in captured["args"]
+    assert captured["GIT_COMMITTER_SESSION_ID"] is None
+    assert captured["record"] is None
+
+
+def test_parent_session_is_passed_through(tmp_path: Path) -> None:
+    parent = "22222222-2222-4222-8222-222222222222"
+    captured = _capture_identity(tmp_path, {"AGENT_PARENT_SESSION_ID": parent})
+    assert json.loads(captured["AGENT_DISPATCH_CAUSE"])["parent_session_id"] == parent
