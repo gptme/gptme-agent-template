@@ -137,3 +137,25 @@ def test_attempt_counter_dropped_when_message_leaves_pending(tmp_path: Path) -> 
     _run(w)
     assert not counter.exists()
     assert (tmp_path / "state" / "attempts" / other).exists()
+
+
+def test_failed_prompt_build_leaves_attempts_unchanged(tmp_path: Path) -> None:
+    w = _workspace(tmp_path, [MSG])
+    _exe(w["script"].parents[2] / "build-system-prompt.sh", "exit 1\n")
+    for _ in range(4):
+        r = _run(w)
+        assert r.returncode == 1
+        assert "attempt counters unchanged" in r.stdout
+    assert _launch_count(w) == 0
+    assert not (tmp_path / "state" / "attempts" / MSG).exists()
+
+
+def test_attempt_counter_dropped_when_pending_list_is_empty(tmp_path: Path) -> None:
+    w = _workspace(tmp_path, [MSG])
+    _run(w)
+    counter = tmp_path / "state" / "attempts" / MSG
+    assert counter.exists()
+    _exe(tmp_path / "gptmail", "printf 'No messages awaiting reply.\\n'\n")
+    r = _run(w)
+    assert "nothing pending" in r.stdout
+    assert not counter.exists()

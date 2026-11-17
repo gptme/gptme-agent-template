@@ -56,13 +56,9 @@ PENDING_OUT="$(AGENT_NAME="$AGENT_NAME" "$GPTMAIL_BIN" agent pending 2>&1)" || {
 # Rows look like: "  <file>.md  from <sender>: <subject>"
 mapfile -t PENDING < <(printf '%s\n' "$PENDING_OUT" | sed -nE 's/^[[:space:]]+([^[:space:]]+\.md)[[:space:]]+from .*/\1/p')
 
-if [ "${#PENDING[@]}" -eq 0 ]; then
-    log "nothing pending"
-    exit 0
-fi
-
 # --- Attempt cap -----------------------------------------------------------
-# Forget attempt counters for messages that are no longer pending.
+# Forget attempt counters for messages that are no longer pending. This runs
+# before the empty-list return so the last handled message's counter goes too.
 for f in "$STATE_DIR"/attempts/*; do
     [ -e "$f" ] || continue
     keep=0
@@ -70,6 +66,13 @@ for f in "$STATE_DIR"/attempts/*; do
     [ "$keep" -eq 1 ] || rm -f "$f"
 done
 
+if [ "${#PENDING[@]}" -eq 0 ]; then
+    log "nothing pending"
+    exit 0
+fi
+
+# Read-only here: counters are only written after the prompt is built, so a
+# failing build cannot burn attempts for messages that never reached a session.
 DISPATCH=()
 for p in "${PENDING[@]}"; do
     n=0
@@ -78,7 +81,6 @@ for p in "${PENDING[@]}"; do
         log "STUCK: $p was dispatched $n times and is still pending; reply or ack it by hand"
         continue
     fi
-    echo $((n + 1)) >"$STATE_DIR/attempts/$p"
     DISPATCH+=("$p")
 done
 
@@ -86,6 +88,19 @@ if [ "${#DISPATCH[@]}" -eq 0 ]; then
     log "all pending messages hit the attempt cap; not launching"
     exit 0
 fi
+
+SYSPROMPT_FILE="$(mktemp "/tmp/${NAME_LC}-agent-msg-sysprompt-XXXXXX")"
+trap 'rm -f "$SYSPROMPT_FILE"' EXIT
+if ! "$WORKSPACE/scripts/build-system-prompt.sh" >"$SYSPROMPT_FILE"; then
+    log "ERROR: build-system-prompt.sh failed; no session launched and attempt counters unchanged"
+    exit 1
+fi
+
+for p in "${DISPATCH[@]}"; do
+    n=0
+    [ -f "$STATE_DIR/attempts/$p" ] && n="$(cat "$STATE_DIR/attempts/$p")"
+    echo $((n + 1)) >"$STATE_DIR/attempts/$p"
+done
 
 # --- Launch ----------------------------------------------------------------
 LAUNCHED_AT="$(date -u +%s)"
@@ -99,10 +114,6 @@ for p in "${DISPATCH[@]}"; do
         log "dispatch: msg=$p msg_ts=unknown launched_at=$(date -u -d "@$LAUNCHED_AT" +%Y%m%dT%H%M%SZ)"
     fi
 done
-
-SYSPROMPT_FILE="$(mktemp "/tmp/${NAME_LC}-agent-msg-sysprompt-XXXXXX")"
-trap 'rm -f "$SYSPROMPT_FILE"' EXIT
-"$WORKSPACE/scripts/build-system-prompt.sh" >"$SYSPROMPT_FILE"
 
 FILE_LIST="$(printf -- '- %s\n' "${DISPATCH[@]}")"
 PROMPT="You are $AGENT_NAME. Your identity files are injected as system context.
