@@ -71,7 +71,15 @@ echo ""
 
 # Core tools
 check_cmd "git" "git" "Install via package manager"
-check_cmd "python3" "python3" "Install Python 3.10+"
+# gptme itself requires Python >=3.11.5 (its pyproject.toml); an older python3
+# would pass a bare existence check and then fail at `pipx install gptme`.
+if check_cmd "python3" "python3" "Install Python 3.11.5+"; then
+    if ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11, 5) else 1)' &> /dev/null; then
+        echo -e "${RED}✗${NC} python3: too old (gptme requires Python 3.11.5+)"
+        echo -e "  ${YELLOW}→ Install Python 3.11.5+ (e.g. 'uv python install 3.12' or your package manager)${NC}"
+        MISSING+=("python3>=3.11.5")
+    fi
+fi
 
 # Python package managers
 if ! check_cmd "pipx" "pipx" "python3 -m pip install --user pipx"; then
