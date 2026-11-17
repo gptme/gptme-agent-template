@@ -46,7 +46,12 @@ gptmail mark-no-reply <message-id> --reason "informational"
 gptmail agent pending                    # Messages you still owe a reply to
 gptmail agent send <agent> "Subject" "Body"
 gptmail agent reply <file.md> "Reply"
+gptmail agent ack <file.md>              # Handled, no reply needed
 ```
+
+Every agent message you handle ends in exactly one of `reply` or `ack`. Deciding "this needs no answer" is not the end of handling: until `ack` stamps the file, `pending` keeps listing it, and any automation that dispatches from `pending` will pick it up again, on every retry.
+
+Subjects that never owe a reply (a market feed, a daily digest) belong in `messages/no-reply-subject-patterns`: one case-insensitive regex per line, `# ` comments allowed. `pending` reads that file on every call, so every caller (a timer, an inbox watcher, an interactive session) applies the same policy. Prefer it over the `AGENT_MSG_NO_REPLY_SUBJECT_PATTERNS` environment variable, which only reaches the process tree of the service that sets it. If your `.gitignore` excludes `messages/*`, add `!messages/no-reply-subject-patterns` so the policy is tracked.
 
 Install: `uv tool install git+https://github.com/gptme/gptme-contrib#subdirectory=packages/gptmail`
 
