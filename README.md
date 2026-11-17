@@ -219,9 +219,11 @@ The `scripts/build-system-prompt.sh` script reads `gptme.toml` and builds a syst
 
 #### Claude Code lesson-hook dependencies
 
-The shipped `.claude/settings.json` invokes the lesson hook with the workspace's
-`.venv/bin/python3`. Install `gptme-rag` in that interpreter's environment;
-installing it only through `pipx` or a global Python does not satisfy the hook:
+The shipped `.claude/settings.json` runs the lesson hook with the workspace's
+`.venv/bin/python3` when it exists, and falls back to `python3` on `PATH`
+otherwise (a fresh fork set up with `install-deps.sh` and `pipx` has no
+`.venv`). The matcher needs `gptme-rag` importable in whichever interpreter
+runs; installing it only through `pipx` does not satisfy a workspace `.venv`:
 
 ```sh
 git submodule update --init --recursive
@@ -229,18 +231,10 @@ uv venv .venv
 uv pip install --python .venv/bin/python3 ./gptme-contrib/packages/gptme-rag
 ```
 
-After updating the submodule to a version containing the diagnostics from
+When the matcher import fails, ordinary hook calls stay fail-open. Once the
+contrib submodule includes the diagnostics from
 [gptme/gptme-contrib#2169](https://github.com/gptme/gptme-contrib/issues/2169),
-verify the installation without a Claude Code session or stdin:
-
-```sh
-.venv/bin/python3 .claude/hooks/match-lessons.py --self-check
-```
-
-The check exits non-zero when the matcher cannot be imported or no configured
-lesson directory exists. Run it after dependency/submodule updates or as a daily
-workspace health check. Ordinary hook calls remain fail-open, but record
-`dependency_missing` instead of `no_match` when the matcher import fails.
+they record `dependency_missing` instead of `no_match`.
 <!--/template-->
 
 <!--template-->
