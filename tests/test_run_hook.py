@@ -12,8 +12,10 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -151,3 +153,57 @@ def test_settings_hooks_do_not_block_without_hook_scripts(tmp_path, event, comma
     )
     assert result.returncode == 0, result.stderr
     assert "hook script not found" in result.stderr
+    assert "hook script not found" in (tmp_path / "miss.log").read_text()
+
+
+def test_unwritable_miss_log_still_exits_zero(tmp_path):
+    # The miss log is best effort: if it cannot be written the hook is still skipped.
+    log_dir = tmp_path / "is-a-directory"
+    log_dir.mkdir()
+    result = subprocess.run(
+        [str(LAUNCHER), "--no-block", sys.executable, str(tmp_path / "missing.py")],
+        input="{}",
+        check=False,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "CLAUDE_HOOK_MISS_LOG": str(log_dir)},
+    )
+    assert result.returncode == 0, result.stderr
+    assert "hook script not found" in result.stderr
+
+
+def test_no_block_passes_termination_on_to_the_script(tmp_path):
+    # A hook that hits its timeout is killed by signal. In --no-block mode the script is a
+    # child of the launcher and must not outlive it.
+    pid_file = tmp_path / "child.pid"
+    script = tmp_path / "slow.py"
+    script.write_text(
+        "import os, sys, time\n"
+        "open(sys.argv[1], 'w').write(str(os.getpid()))\n"
+        "time.sleep(60)\n"
+    )
+    launcher = subprocess.Popen(
+        [str(LAUNCHER), "--no-block", sys.executable, str(script), str(pid_file)],
+        stdin=subprocess.DEVNULL,
+    )
+    try:
+        deadline = time.time() + 10
+        while (
+            not (pid_file.exists() and pid_file.read_text()) and time.time() < deadline
+        ):
+            time.sleep(0.05)
+        child_pid = int(pid_file.read_text())
+        launcher.send_signal(signal.SIGTERM)
+        launcher.wait(timeout=10)
+        deadline = time.time() + 10
+        alive = True
+        while alive and time.time() < deadline:
+            try:
+                os.kill(child_pid, 0)
+                time.sleep(0.05)
+            except ProcessLookupError:
+                alive = False
+        assert not alive, "hook script kept running after the launcher was terminated"
+    finally:
+        if launcher.poll() is None:
+            launcher.kill()

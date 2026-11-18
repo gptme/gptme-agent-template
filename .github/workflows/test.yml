@@ -69,7 +69,11 @@ jobs:
         # without it (or with a non-executable copy) would fail every hook call.
         for agent in test-agent test-agent-named; do
           f="$agent/.claude/hooks/run-hook.sh"
-          test -f "$f" && test ! -L "$f" && test -x "$f"
+          # One test per line: a failing test in the middle of an `&&` chain would not
+          # fail the step under `bash -e`.
+          test -f "$f"
+          test ! -L "$f"
+          test -x "$f"
           cmp .claude/hooks/run-hook.sh "$f"
         done
 
