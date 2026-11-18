@@ -51,8 +51,8 @@ fi
 
 # Run the script as a child so its exit code can be rewritten, but keep it tied to this
 # process: a hook that hits its timeout is killed by signal, and the script must not outlive
-# the launcher. Save stdin before backgrounding: POSIX sh may replace fd 0 with /dev/null
-# before applying the child command's redirections, so `<&0` alone does not preserve it.
+# the launcher. A background command reads /dev/null by default, and some shells (dash)
+# apply that even to `<&0`, so the hook's stdin is handed over on a spare descriptor.
 exec 3<&0
 "$interp" "$script" "$@" <&3 3<&- &
 child=$!
