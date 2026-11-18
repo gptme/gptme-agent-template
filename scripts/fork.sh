@@ -236,7 +236,9 @@ copy_file AGENTS.md
 # Claude Code hook config: registers the lesson-matcher (UserPromptSubmit/PreToolUse)
 # and the post-session record writer (Stop) so a fork is observable and lesson-aware
 # by default. .claude/hooks/match-lessons.py is a symlink into gptme-contrib; cp -r
-# preserves it.
+# preserves it. .claude/hooks/run-hook.sh is a real file that every hook command goes
+# through, so a missing hook script is skipped instead of blocking the session;
+# copy_file keeps its exec bit (chmod +x on *.sh).
 copy_file .claude
 copy_file gptme.toml
 copy_file .pre-commit-config.yaml
