@@ -157,6 +157,21 @@ tasks and journals simultaneously, producing file races and Git conflicts.
 external lock wrapped around both launchers) rather than running them side by
 side.
 
+### Claude Code hooks
+
+`.claude/settings.json` runs every hook through `.claude/hooks/run-hook.sh`
+(`run-hook.sh [--no-block] INTERPRETER SCRIPT [ARGS...]`). Claude Code treats a
+hook exit status of 2 as "block", and `python3 missing.py` exits 2, so a hook
+script that is absent (submodules not checked out, a dangling symlink into
+`gptme-contrib`, a renamed upstream script) would otherwise refuse every tool
+call and the session could not repair itself. The launcher skips a missing
+script or interpreter with exit 0 and logs it to
+`${CLAUDE_HOOK_MISS_LOG:-$TMPDIR/claude-hook-missing.log}`. `--no-block` marks
+advisory hooks (lesson matching, session records): their exit 2 becomes 1, so
+an error is shown but never blocks. When you add a hook, route it through the
+launcher and leave `--no-block` off only if it blocks on purpose; keep
+`run-hook.sh` a regular file, never a symlink into the submodule.
+
 ## Before you start: a short checklist
 
 - [ ] Where does it run, and what's the isolation boundary?
