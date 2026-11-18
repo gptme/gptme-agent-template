@@ -15,7 +15,7 @@
 #   - otherwise exec INTERPRETER SCRIPT ARGS with stdin/stdout untouched; the exit code is the
 #     script's own, so hooks that block on purpose (exit 2) still block.
 #   - --no-block: for advisory hooks (lesson matching, logging). A script exit of 2 becomes 1:
-#     the error stays visible but can never block.
+#     the error stays visible but can never block. TERM, INT and HUP are passed on to the script.
 #
 # Miss log: ${CLAUDE_HOOK_MISS_LOG:-${TMPDIR:-/tmp}/claude-hook-missing.log}
 
@@ -49,8 +49,19 @@ if [ "$no_block" -eq 0 ]; then
     exec "$interp" "$script" "$@"
 fi
 
-"$interp" "$script" "$@"
+# Run the script as a child so its exit code can be rewritten, but keep it tied to this
+# process: a hook that hits its timeout is killed by signal, and the script must not outlive
+# the launcher. `<&0` keeps the hook's stdin (a background command would otherwise read
+# /dev/null).
+"$interp" "$script" "$@" <&0 &
+child=$!
+trap 'kill -TERM "$child" 2>/dev/null' TERM INT HUP
+wait "$child"
 rc=$?
+if [ "$rc" -gt 128 ]; then
+    # wait was interrupted by a trapped signal, or the script died from one: reap it.
+    wait "$child" 2>/dev/null
+fi
 if [ "$rc" -eq 2 ]; then
     exit 1
 fi
