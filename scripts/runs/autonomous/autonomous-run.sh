@@ -222,12 +222,15 @@ if [ "${AGENT_SESSION_IDENTITY:-1}" = "1" ]; then
         GPTME_NAME_ARGS=(--name "$AGENT_SESSION_ID")
         export GIT_COMMITTER_SESSION_ID="$AGENT_SESSION_ID"
         export AGENT_SESSION_LABEL="${AGENT_SESSION_LABEL:-${AGENT_SESSION_ID:0:4}}"
+        # AGENT_DISPATCH_KIND is not defaulted: SessionRecord.dispatch_kind is the
+        # closed set of child-spawn mechanisms and drops systemd/manual to null;
+        # the trigger lives only in the cause object. A real spawner may set it.
         # Dispatch cause: `post_session` reads these names from the environment.
         if [ -n "${INVOCATION_ID:-}" ]; then
-            export AGENT_DISPATCH_KIND="${AGENT_DISPATCH_KIND:-systemd}"
+            DISPATCH_CAUSE_KIND="systemd"
             export AGENT_DISPATCH_ID="${AGENT_DISPATCH_ID:-$INVOCATION_ID}"
         else
-            export AGENT_DISPATCH_KIND="${AGENT_DISPATCH_KIND:-manual}"
+            DISPATCH_CAUSE_KIND="manual"
             export AGENT_DISPATCH_ID="${AGENT_DISPATCH_ID:-$$}"
         fi
         # AGENT_PARENT_SESSION_ID is passed through, never defaulted: inventing
@@ -242,9 +245,9 @@ cause = {"kind": kind, "id": dispatch_id}
 if parent:
     cause["parent_session_id"] = parent
 print(json.dumps(cause, sort_keys=True))
-' "$AGENT_DISPATCH_KIND" "$AGENT_DISPATCH_ID" "${AGENT_PARENT_SESSION_ID:-}")"
+' "$DISPATCH_CAUSE_KIND" "$AGENT_DISPATCH_ID" "${AGENT_PARENT_SESSION_ID:-}")"
         fi
-        log "Session identity: ${AGENT_SESSION_LABEL} (${AGENT_DISPATCH_KIND})"
+        log "Session identity: ${AGENT_SESSION_LABEL} (${DISPATCH_CAUSE_KIND})"
     else
         log "WARN: could not mint a session id — commits will carry no trailer"
     fi

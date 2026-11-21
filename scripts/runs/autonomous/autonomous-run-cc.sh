@@ -211,13 +211,17 @@ if [ "${AGENT_SESSION_IDENTITY:-1}" = "1" ]; then
         # Short label, for journals and anything human-facing.
         export AGENT_SESSION_LABEL="${AGENT_SESSION_LABEL:-${AGENT_SESSION_ID:0:4}}"
 
+        # AGENT_DISPATCH_KIND is NOT defaulted here: SessionRecord.dispatch_kind
+        # is the closed set of child-spawn mechanisms (agent-tool, worker, ...)
+        # and drops anything else to null, so a trigger like systemd/manual
+        # belongs only in the cause object below. A real spawner may still set it.
         # Dispatch cause: why this session exists. `post_session` reads these
         # four names from the environment, so exporting them is the whole wiring.
         if [ -n "${INVOCATION_ID:-}" ]; then
-            export AGENT_DISPATCH_KIND="${AGENT_DISPATCH_KIND:-systemd}"
+            DISPATCH_CAUSE_KIND="systemd"
             export AGENT_DISPATCH_ID="${AGENT_DISPATCH_ID:-$INVOCATION_ID}"
         else
-            export AGENT_DISPATCH_KIND="${AGENT_DISPATCH_KIND:-manual}"
+            DISPATCH_CAUSE_KIND="manual"
             export AGENT_DISPATCH_ID="${AGENT_DISPATCH_ID:-$$}"
         fi
         # AGENT_PARENT_SESSION_ID is deliberately not defaulted: it is set by
@@ -236,10 +240,10 @@ cause = {"kind": kind, "id": dispatch_id}
 if parent:
     cause["parent_session_id"] = parent
 print(json.dumps(cause, sort_keys=True))
-' "$AGENT_DISPATCH_KIND" "$AGENT_DISPATCH_ID" "${AGENT_PARENT_SESSION_ID:-}")"
+' "$DISPATCH_CAUSE_KIND" "$AGENT_DISPATCH_ID" "${AGENT_PARENT_SESSION_ID:-}")"
         fi
 
-        log "Session identity: ${AGENT_SESSION_LABEL} (${AGENT_DISPATCH_KIND})"
+        log "Session identity: ${AGENT_SESSION_LABEL} (${DISPATCH_CAUSE_KIND})"
     else
         log "WARN: could not mint a session id — commits will carry no trailer"
     fi
