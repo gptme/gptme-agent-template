@@ -14,6 +14,8 @@ import stat
 import subprocess
 from pathlib import Path
 
+import pytest
+
 RUNNER = (
     Path(__file__).resolve().parents[1]
     / "scripts"
@@ -84,13 +86,32 @@ def _capture_session(tmp_path: Path, env_extra: dict[str, str]) -> dict:
         "import json, os, sys\n"
         "from pathlib import Path\n"
         "keys = ('AGENT_SESSION_ID', 'GIT_COMMITTER_SESSION_ID', "
-        "'AGENT_JOURNAL_PATH', 'AGENT_SESSION_LABEL', 'AGENT_DISPATCH_CAUSE')\n"
+        "'AGENT_JOURNAL_PATH', 'AGENT_SESSION_LABEL', 'AGENT_DISPATCH_KIND', "
+        "'AGENT_DISPATCH_CAUSE')\n"
         "capture = {key: os.environ.get(key) for key in keys}\n"
         "capture['args'] = sys.argv[1:]\n"
         "Path(os.environ['HOME'], 'session.json').write_text(json.dumps(capture))\n"
     )
     assert _run(tmp_path, env_extra) == 0
     return json.loads((tmp_path / "session.json").read_text())
+
+
+@pytest.mark.parametrize("dispatch_kind", [None, "worker"])
+@pytest.mark.parametrize("invocation_id", [None, "scheduled-invocation"])
+def test_dispatch_kind_is_separate_from_trigger(
+    tmp_path: Path, dispatch_kind: str | None, invocation_id: str | None
+) -> None:
+    env = {}
+    if dispatch_kind is not None:
+        env["AGENT_DISPATCH_KIND"] = dispatch_kind
+    if invocation_id is not None:
+        env["INVOCATION_ID"] = invocation_id
+    captured = _capture_session(tmp_path, env)
+    assert captured["AGENT_DISPATCH_KIND"] == dispatch_kind
+    cause = json.loads(captured["AGENT_DISPATCH_CAUSE"])
+    assert cause["kind"] == ("systemd" if invocation_id else "manual")
+    if invocation_id is not None:
+        assert cause["id"] == invocation_id
 
 
 def test_identity_opt_out_clears_inherited_commit_trailer(tmp_path: Path) -> None:
