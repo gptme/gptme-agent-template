@@ -1,8 +1,10 @@
 # Workspace Structure for Forkable Agents
 
-This describes the template's manual `scripts/fork.sh` path. The
-`gptme-agent create` CLI is implemented by gptme and can evolve independently;
+This describes the template's manual `scripts/fork.sh` path.
+<!--template-->
+The `gptme-agent create` CLI is implemented by gptme and can evolve independently;
 check its output rather than assuming the two paths customize every file alike.
+<!--/template-->
 
 ## Directory Structure Overview
 

@@ -87,7 +87,9 @@ clone, initialize it before testing either backend:
 git submodule update --init --recursive
 ```
 
+<!--template-->
 `gptme-agent create` initializes the submodule for template-based workspaces.
+<!--/template-->
 
 - **Session gate** (`gptme-contrib/scripts/runs/autonomous/session-gate.py`): used
   by both `autonomous-run.sh` and `autonomous-run-cc.sh`. Skips when there's no
@@ -109,10 +111,16 @@ FORCE_SESSION=1 ./scripts/runs/autonomous/autonomous-run-cc.sh
 
 ### 4. Schedule with systemd (Linux)
 
+<!--template-->
 For the gptme backend, `gptme-agent install` generates service/timer files. It
-still requires the launcher configuration and manual test above. For a custom
-service or Claude Code, copy the shipped examples **from the workspace root**
-(do not install both alternatives under the same destination):
+still requires the launcher configuration and manual test above.
+<!--/template-->
+For a custom service or Claude Code, copy the shipped systemd examples. They live
+under `dotfiles/.config/systemd/user/` in the **template repository's checkout**:
+workspaces created by `scripts/fork.sh` <!--template-->(which `gptme-agent create` runs)<!--/template-->
+only get Git hook links under `dotfiles/`, not these examples. Run the copy
+commands from the root of a clone of the template, then point the copied units at
+your new workspace (do not install both alternatives under the same destination):
 
 ```bash
 mkdir -p ~/.config/systemd/user
@@ -129,13 +137,17 @@ cp dotfiles/.config/systemd/user/agent-autonomous.timer.example \
   ~/.config/systemd/user/agent-autonomous.timer
 ```
 
-Before enabling, edit the copied files: replace all workspace paths, review
-`OnCalendar` and restart behavior, and include your Node installation in `PATH`
-for Claude Code. The timer example currently has `Requires=agent-autonomous.service`:
+Before enabling, edit the copied files: replace all workspace paths with your
+new workspace's absolute path, review `OnCalendar` and restart behavior, and
+include your Node installation in `PATH` for Claude Code. The timer example currently has `Requires=agent-autonomous.service`:
 remove that dependency if enabling the timer should wait until the calendar
 instead of immediately starting a service. Set `Unit=agent-autonomous.service`
-in its `[Timer]` section explicitly. Known scheduling-example defects are tracked
-in [gptme/gptme-agent-template#137](https://github.com/gptme/gptme-agent-template/issues/137).
+in its `[Timer]` section explicitly.
+
+<!--template-->
+Known scheduling-example defects are tracked in
+[gptme/gptme-agent-template#137](https://github.com/gptme/gptme-agent-template/issues/137).
+<!--/template-->
 
 After reviewing those settings:
 
