@@ -72,8 +72,13 @@ acquire_lock() {
 }
 
 release_lock() {
+    # Only remove a lock we own: a run refused by acquire_lock also exits
+    # through this trap, and must not delete the live run's lock.
     # shellcheck disable=SC2317  # Called by trap, not directly
-    rm -f "$LOCKFILE"
+    if [ "$(cat "$LOCKFILE" 2>/dev/null)" = "$$" ]; then
+        # shellcheck disable=SC2317  # Called by trap, not directly
+        rm -f "$LOCKFILE"
+    fi
 }
 
 trap release_lock EXIT INT TERM HUP
@@ -123,10 +128,35 @@ if [ "${FORCE_SESSION:-0}" != "1" ]; then
 fi
 
 # --- Git pull ---
-log "Pulling latest changes..."
-git pull --rebase --autostash 2>&1 || {
-    log "WARN: git pull failed, continuing with local state"
+# A merge or rebase someone else started (maybe with a staged resolution) is
+# left untouched: pulling would fail and the abort below would discard it.
+git_op_in_progress() {
+    local path
+    for path in rebase-merge rebase-apply MERGE_HEAD; do
+        path="$(git rev-parse --git-path "$path" 2>/dev/null)"
+        [ -n "$path" ] && [ -e "$path" ] && return 0
+    done
+    return 1
 }
+if git_op_in_progress; then
+    log "ERROR: a merge or rebase is already in progress — resolve it before the next run"
+    exit 1
+else
+    log "Pulling latest changes..."
+    git pull --rebase --autostash 2>&1 || {
+        log "WARN: git pull failed, continuing with local state"
+        # A conflicting rebase would leave the repo mid-rebase with conflict
+        # markers, so every later pull and commit fails. Abort it (this also
+        # restores the autostash) and keep the pre-pull state.
+        git rebase --abort 2>/dev/null || true
+    }
+fi
+# A pull can exit 0 and still leave conflicts (re-applying the autostash).
+# Commits would fail all session, so stop here instead.
+if [ -n "$(git diff --name-only --diff-filter=U 2>/dev/null)" ]; then
+    log "ERROR: unmerged files in the workspace — resolve them before the next run"
+    exit 1
+fi
 
 # --- Build system prompt ---
 SYSPROMPT_FILE=$(mktemp "/tmp/${AGENT_NAME,,}-sysprompt-XXXXXX")

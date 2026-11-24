@@ -284,3 +284,182 @@ def test_parent_session_is_passed_through(tmp_path: Path) -> None:
     parent = "22222222-2222-4222-8222-222222222222"
     captured = _capture_identity(tmp_path, {"AGENT_PARENT_SESSION_ID": parent})
     assert json.loads(captured["AGENT_DISPATCH_CAUSE"])["parent_session_id"] == parent
+
+
+@pytest.mark.parametrize("ignores_term", [False, True])
+def test_terminated_runner_stops_gptme(tmp_path: Path, ignores_term: bool) -> None:
+    """SIGTERM to the runner (manual or cron run, outside systemd's cgroup kill)
+    must stop gptme. gptme's parent is `timeout`, not the runner, so cleanup's
+    `pkill -P $$ gptme` used to match nothing and leave gptme orphaned. A gptme
+    that ignores SIGTERM is force-stopped after the grace period."""
+    import time
+
+    _setup_workspace(tmp_path)
+    pidfile = tmp_path / "gptme.pid"
+    gptme = tmp_path / "bin" / "gptme"
+    trap = "trap '' TERM\n" if ignores_term else ""
+    gptme.write_text(f"#!/bin/bash\n{trap}echo $$ > '{pidfile}'\nexec sleep 30\n")
+    script = tmp_path / "scripts" / "runs" / "autonomous" / "autonomous-run.sh"
+    env = {
+        "PATH": f"{tmp_path}/bin:/usr/bin:/bin",
+        "HOME": str(tmp_path),
+        "FORCE_SESSION": "1",
+    }
+    runner = subprocess.Popen(
+        ["bash", str(script)],
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    gptme_pid = 0
+    try:
+        for _ in range(100):
+            if pidfile.exists() and pidfile.read_text().strip():
+                break
+            time.sleep(0.1)
+        gptme_pid = int(pidfile.read_text())
+        runner.terminate()
+        runner.wait(timeout=15)
+        for _ in range(50):
+            # kill(pid, 0) also succeeds for zombies in containers whose PID 1
+            # does not reap promptly. They have exited and cannot keep running.
+            status = subprocess.run(
+                ["ps", "-o", "stat=", "-p", str(gptme_pid)],
+                capture_output=True,
+                text=True,
+                check=False,
+            ).stdout.strip()
+            if not status or status.startswith("Z"):
+                break
+            time.sleep(0.1)
+        else:
+            raise AssertionError("gptme still running after runner was terminated")
+    finally:
+        if runner.poll() is None:
+            runner.kill()
+        if gptme_pid:
+            try:
+                os.kill(gptme_pid, 9)
+            except ProcessLookupError:
+                pass
+
+
+def test_pull_conflict_does_not_leave_unmerged_files(tmp_path: Path) -> None:
+    """With pull configured to merge, a conflicting `git pull` must not leave
+    unmerged files behind for every later pull and commit to trip on."""
+    _setup_workspace(tmp_path)
+    (tmp_path / "bin" / "git").unlink()  # this test needs real git
+    genv = {
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(tmp_path),
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+
+    def git(*args: str, cwd: Path = tmp_path) -> None:
+        subprocess.run(
+            ["git", *args], cwd=cwd, env=genv, check=True, capture_output=True
+        )
+
+    git("init", "-q", "-b", "master")
+    git("config", "pull.rebase", "false")
+    (tmp_path / "state.md").write_text("base\n")
+    git("add", "-A")
+    git("commit", "-qm", "init")
+    origin = tmp_path.parent / f"{tmp_path.name}-origin.git"
+    git("clone", "-q", "--bare", str(tmp_path), str(origin))
+    git("remote", "add", "origin", str(origin))
+    git("fetch", "-q", "origin")
+    git("branch", "-q", "--set-upstream-to=origin/master")
+    other = tmp_path.parent / f"{tmp_path.name}-other"
+    git("clone", "-q", str(origin), str(other), cwd=tmp_path.parent)
+    (other / "state.md").write_text("upstream edit\n")
+    git("commit", "-qam", "upstream", cwd=other)
+    git("push", "-q", "origin", "master", cwd=other)
+    (tmp_path / "state.md").write_text("local edit\n")
+    git("commit", "-qam", "local")
+
+    upstream = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=other,
+        env=genv,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    result = _run(
+        tmp_path,
+        {**genv, "PATH": f"{tmp_path}/bin:/usr/bin:/bin", "FORCE_SESSION": "1"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "CONFLICT" in result.stdout, "the pull never hit the conflict"
+    assert "Git pull failed" in result.stdout
+    fetched = subprocess.run(
+        ["git", "rev-parse", "origin/master"],
+        cwd=tmp_path,
+        env=genv,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert fetched == upstream
+    assert not (tmp_path / ".git" / "MERGE_HEAD").exists(), "left mid-merge"
+    assert (tmp_path / "state.md").read_text() == "local edit\n"
+
+
+@pytest.mark.parametrize("operation", ["rebase", "merge"])
+def test_existing_git_operation_stops_before_agent(
+    tmp_path: Path, operation: str
+) -> None:
+    """Even with all conflicts staged, leave the operator's operation alone."""
+    marker = _setup_workspace(tmp_path)
+    (tmp_path / "bin" / "git").unlink()
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(tmp_path),
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+
+    def git(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", *args],
+            cwd=tmp_path,
+            env=env,
+            check=check,
+            capture_output=True,
+            text=True,
+        )
+
+    git("init", "-q", "-b", "master")
+    (tmp_path / "state.md").write_text("base\n")
+    git("add", "state.md")
+    git("commit", "-qm", "base")
+    git("checkout", "-qb", "other")
+    (tmp_path / "state.md").write_text("other\n")
+    git("commit", "-qam", "other")
+    git("checkout", "-q", "master")
+    (tmp_path / "state.md").write_text("local\n")
+    git("commit", "-qam", "local")
+    assert git(operation, "other", check=False).returncode != 0
+    (tmp_path / "state.md").write_text("resolved\n")
+    git("add", "state.md")
+    assert not git("diff", "--name-only", "--diff-filter=U").stdout
+
+    result = _run(tmp_path, {"FORCE_SESSION": "1"})
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "already in progress" in result.stdout
+    op_path = "rebase-merge" if operation == "rebase" else "MERGE_HEAD"
+    assert (tmp_path / ".git" / op_path).exists(), "operation was aborted"
+    assert git("show", ":state.md").stdout == "resolved\n"
+    assert not marker.exists(), "agent started during an unfinished git operation"

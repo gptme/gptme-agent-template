@@ -36,11 +36,16 @@ def _setup_workspace(tmp_path: Path) -> None:
     scripts_dir = tmp_path / "scripts" / "runs" / "autonomous"
     scripts_dir.mkdir(parents=True)
     agent_name = "TestAgent" + hashlib.sha256(str(tmp_path).encode()).hexdigest()[:16]
-    (scripts_dir / "autonomous-run-cc.sh").write_text(
-        RUNNER.read_text().replace(
-            'AGENT_NAME="YourAgent"', f'AGENT_NAME="{agent_name}"'
-        )
+    source = RUNNER.read_text()
+    rewritten = source.replace(
+        'AGENT_NAME="YourAgent"', f'AGENT_NAME="{agent_name}"'
+    ).replace(
+        'LOCKFILE="/tmp/${AGENT_NAME,,}-autonomous.lock"',
+        f'LOCKFILE="{_lockfile(tmp_path)}"',
     )
+    if _lockfile(tmp_path).name not in rewritten:
+        raise AssertionError("failed to rewrite LOCKFILE in runner")
+    (scripts_dir / "autonomous-run-cc.sh").write_text(rewritten)
 
     # Stub executables: git and claude must exit 0 for non-gate tests
     bin_dir = tmp_path / "bin"
@@ -59,7 +64,18 @@ def _setup_workspace(tmp_path: Path) -> None:
     (tmp_path / "gptme-contrib" / "scripts" / "runs" / "autonomous").mkdir(parents=True)
 
 
+def _lockfile(tmp_path: Path) -> Path:
+    """Each test's private lock, inside tmp_path rather than shared /tmp."""
+    return tmp_path / "autonomous.lock"
+
+
 def _run(tmp_path: Path, env_extra: dict[str, str] | None = None) -> int:
+    return _run_result(tmp_path, env_extra).returncode
+
+
+def _run_result(
+    tmp_path: Path, env_extra: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     script = tmp_path / "scripts" / "runs" / "autonomous" / "autonomous-run-cc.sh"
     env = {
         "PATH": f"{tmp_path}/bin:/usr/bin:/bin",
@@ -69,13 +85,13 @@ def _run(tmp_path: Path, env_extra: dict[str, str] | None = None) -> int:
     }
     if env_extra:
         env.update(env_extra)
-    result = subprocess.run(
+    return subprocess.run(
         ["bash", str(script)],
         env=env,
         capture_output=True,
+        text=True,
         timeout=15,
     )
-    return result.returncode
 
 
 def _capture_session(tmp_path: Path, env_extra: dict[str, str]) -> dict:
@@ -222,3 +238,128 @@ def test_session_gate_error_fails_open(tmp_path: Path) -> None:
     gate.write_text("import sys; sys.exit(2)\n")
     rc = _run(tmp_path)
     assert rc == 0
+
+
+def test_refused_run_keeps_live_runs_lock(tmp_path: Path) -> None:
+    """A run refused by a live lock must not delete that lock on its way out,
+    or the next run starts alongside the live one."""
+    _setup_workspace(tmp_path)
+    lock = _lockfile(tmp_path)
+    holder = subprocess.Popen(["sleep", "30"])
+    try:
+        lock.write_text(f"{holder.pid}\n")
+        rc = _run(tmp_path, {"FORCE_SESSION": "1"})
+        assert rc == 1
+        assert lock.exists(), "refused run removed the live run's lock"
+        assert lock.read_text().strip() == str(holder.pid)
+    finally:
+        holder.kill()
+        holder.wait()
+        lock.unlink(missing_ok=True)
+
+
+_GIT_ENV = {
+    "PATH": "/usr/bin:/bin",
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_AUTHOR_NAME": "T",
+    "GIT_AUTHOR_EMAIL": "t@example.com",
+    "GIT_COMMITTER_NAME": "T",
+    "GIT_COMMITTER_EMAIL": "t@example.com",
+}
+
+
+def _git(tmp_path: Path, *args: str, cwd: Path | None = None) -> str:
+    return subprocess.run(
+        ["git", *args],
+        cwd=cwd or tmp_path,
+        env={**_GIT_ENV, "HOME": str(tmp_path)},
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+
+
+def _diverged_repo(tmp_path: Path, *, local_commit: bool) -> str:
+    """Make tmp_path a clone whose origin changed state.md upstream.
+
+    With local_commit, a conflicting local commit exists; otherwise the local
+    edit is left uncommitted. Returns the upstream commit sha.
+    """
+    _setup_workspace(tmp_path)
+    (tmp_path / "bin" / "git").unlink()  # these tests need real git
+    _git(tmp_path, "init", "-q", "-b", "master")
+    (tmp_path / "state.md").write_text("base\n")
+    _git(tmp_path, "add", "state.md")
+    _git(tmp_path, "commit", "-qm", "init")
+    origin = tmp_path.parent / f"{tmp_path.name}-origin.git"
+    _git(tmp_path, "clone", "-q", "--bare", str(tmp_path), str(origin))
+    _git(tmp_path, "remote", "add", "origin", str(origin))
+    _git(tmp_path, "fetch", "-q", "origin")
+    _git(tmp_path, "branch", "-q", "--set-upstream-to=origin/master")
+    other = tmp_path.parent / f"{tmp_path.name}-other"
+    _git(tmp_path, "clone", "-q", str(origin), str(other), cwd=tmp_path.parent)
+    (other / "state.md").write_text("upstream edit\n")
+    _git(tmp_path, "commit", "-qam", "upstream", cwd=other)
+    _git(tmp_path, "push", "-q", "origin", "master", cwd=other)
+    (tmp_path / "state.md").write_text("local edit\n")
+    if local_commit:
+        _git(tmp_path, "commit", "-qam", "local")
+    return _git(tmp_path, "rev-parse", "HEAD", cwd=other).strip()
+
+
+def test_pull_conflict_does_not_leave_repo_mid_rebase(tmp_path: Path) -> None:
+    """A conflicting `git pull --rebase` must not wedge the workspace: every
+    later run's pull and the session's commits would fail on unmerged files."""
+    upstream = _diverged_repo(tmp_path, local_commit=True)
+
+    result = _run_result(tmp_path, {"FORCE_SESSION": "1"})
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "CONFLICT" in result.stdout, "the pull never hit the conflict"
+    assert "git pull failed" in result.stdout
+    assert _git(tmp_path, "rev-parse", "origin/master").strip() == upstream
+    gitdir = tmp_path / ".git"
+    assert not (gitdir / "rebase-merge").exists(), "left mid-rebase"
+    assert not (gitdir / "rebase-apply").exists(), "left mid-rebase"
+    assert (tmp_path / "state.md").read_text() == "local edit\n"
+
+
+@pytest.mark.parametrize("operation", ["rebase", "merge"])
+def test_pull_leaves_existing_rebase_untouched(tmp_path: Path, operation: str) -> None:
+    """A staged resolution survives, and no agent starts during the operation."""
+    _diverged_repo(tmp_path, local_commit=True)
+    marker = tmp_path / "claude-ran"
+    (tmp_path / "bin" / "claude").write_text(f"#!/bin/bash\ntouch '{marker}'\n")
+    _git(tmp_path, "fetch", "-q", "origin")
+    rebase = subprocess.run(
+        ["git", operation, "origin/master"],
+        cwd=tmp_path,
+        env={**_GIT_ENV, "HOME": str(tmp_path)},
+        capture_output=True,
+    )
+    assert rebase.returncode != 0, "setup: rebase should conflict"
+    (tmp_path / "state.md").write_text("resolved\n")
+    _git(tmp_path, "add", "state.md")
+
+    result = _run_result(tmp_path, {"FORCE_SESSION": "1"})
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "already in progress" in result.stdout, result.stdout
+    op_path = "rebase-merge" if operation == "rebase" else "MERGE_HEAD"
+    assert (tmp_path / ".git" / op_path).exists(), "operation was aborted"
+    assert _git(tmp_path, "show", ":state.md") == "resolved\n"
+    assert not marker.exists(), "agent started during an unfinished git operation"
+
+
+def test_pull_with_autostash_conflict_stops_run(tmp_path: Path) -> None:
+    """`git pull --autostash` exits 0 when re-applying the stash conflicts; the
+    run must stop rather than start a session that cannot commit."""
+    _diverged_repo(tmp_path, local_commit=False)
+
+    result = _run_result(tmp_path, {"FORCE_SESSION": "1"})
+
+    assert _git(
+        tmp_path, "diff", "--name-only", "--diff-filter=U"
+    ).strip(), "setup: the autostash should conflict"
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "unmerged files" in result.stdout

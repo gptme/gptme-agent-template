@@ -31,15 +31,51 @@ log() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
 }
 
+# Print every descendant pid of $1, children before grandchildren.
+descendants() {
+    # shellcheck disable=SC2317  # Called by cleanup, not directly
+    local child
+    # shellcheck disable=SC2317
+    for child in $(pgrep -P "$1" 2>/dev/null); do
+        echo "$child"
+        descendants "$child"
+    done
+}
+
+# Succeed if any pid in the space-separated list $1 is still running.
+any_alive() {
+    # shellcheck disable=SC2317  # Called by cleanup, not directly
+    local pid
+    # shellcheck disable=SC2317
+    for pid in $1; do
+        kill -0 "$pid" 2>/dev/null && return 0
+    done
+    # shellcheck disable=SC2317
+    return 1
+}
+
 # Cleanup function
 cleanup() {
     # shellcheck disable=SC2317  # Called by trap, not directly
     log "Cleaning up..."
-    # Kill any gptme child processes
+    # Stop any remaining descendants. gptme runs under `timeout`, so it is a
+    # grandchild: signal the whole tree, give it a grace period, then force
+    # it, so gptme never outlives the runner or its prompt file.
     # shellcheck disable=SC2317  # Called by trap, not directly
-    pkill -P $$ gptme 2>/dev/null || true
+    local pids
     # shellcheck disable=SC2317  # Called by trap, not directly
-    sleep 1
+    pids="$(descendants $$)"
+    # shellcheck disable=SC2317  # Called by trap, not directly
+    if [ -n "$pids" ]; then
+        # shellcheck disable=SC2086  # word-split the pid list
+        kill -TERM $pids 2>/dev/null || true
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+            any_alive "$pids" || break
+            sleep 0.5
+        done
+        # shellcheck disable=SC2086
+        kill -KILL $pids 2>/dev/null || true
+    fi
     # Clean up temporary prompt file. Guard the unset case so an early skip
     # (session gate, before PROMPT_FILE is assigned) still exits 0 under set -e.
     # shellcheck disable=SC2317  # Called by trap, not directly
@@ -96,8 +132,30 @@ cd "$WORKSPACE"
 REPO_DIR="$(git rev-parse --show-toplevel)"
 SCRIPT_DIR="$REPO_DIR/scripts"
 export PATH="$REPO_DIR/scripts:$PATH"
-if ! git pull; then
+# A merge or rebase someone else started (maybe with a staged resolution) is
+# left untouched: pulling would fail and the abort below would discard it.
+git_op_in_progress() {
+    local path
+    for path in rebase-merge rebase-apply MERGE_HEAD; do
+        path="$(git rev-parse --git-path "$path" 2>/dev/null)"
+        [ -n "$path" ] && [ -e "$path" ] && return 0
+    done
+    return 1
+}
+if git_op_in_progress; then
+    log "ERROR: a merge or rebase is already in progress, resolve it before the next run"
+    exit 1
+elif ! git pull; then
     log "WARNING: Git pull failed, continuing with current state"
+    # A conflicting pull (merge or pull.rebase) would leave unmerged files that
+    # break every later pull and commit. Abort it and keep the pre-pull state.
+    git rebase --abort 2>/dev/null || git merge --abort 2>/dev/null || true
+fi
+# A pull can exit 0 and still leave conflicts (re-applying an autostash).
+# Commits would fail all session, so stop here instead.
+if [ -n "$(git diff --name-only --diff-filter=U 2>/dev/null)" ]; then
+    log "ERROR: unmerged files in the workspace, resolve them before the next run"
+    exit 1
 fi
 
 # Generate work queue from task files (if script exists)
