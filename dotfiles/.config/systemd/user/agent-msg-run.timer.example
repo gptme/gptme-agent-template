@@ -1,0 +1,14 @@
+[Unit]
+Description=Retry agent-message pickup after an occupied slot
+
+[Timer]
+# Safety net only: agent-msg-run.path owns immediate arrival detection. If a
+# message arrives while a session holds the slot, the second trigger exits 0
+# and no later file may arrive to wake the path again. This re-check covers it.
+OnBootSec=2min
+OnUnitActiveSec=2min
+AccuracySec=10s
+Unit=agent-msg-run.service
+
+[Install]
+WantedBy=timers.target

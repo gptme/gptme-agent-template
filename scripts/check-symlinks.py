@@ -47,6 +47,7 @@ AGENT_SPECIFIC_SCRIPTS = {
     # Autonomous run scripts (agent-customized copies of the run loop infrastructure)
     "autonomous-run.sh",
     "autonomous-run-cc.sh",
+    "agent-msg-run.sh",  # Inbox-triggered pickup session (customized AGENT_NAME)
 }
 
 SKIP_DIRS = {".git", "__pycache__", ".venv", ".mypy_cache", "node_modules"}
