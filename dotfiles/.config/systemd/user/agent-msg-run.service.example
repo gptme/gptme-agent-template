@@ -13,6 +13,9 @@ Environment="PATH=/home/youruser/.nvm/versions/node/v24.13.1/bin:/home/youruser/
 # Debounce: a multi-file SCP, or the read/replied edit a handler makes, lands
 # within a second or two. Wait, then scan once.
 ExecStartPre=/usr/bin/sleep 3
+# Single-lane agents (one scheduled runner, no capacity for a second session):
+# share the scheduled run's lock. See README.md "Single-lane mode".
+#Environment=AGENT_MSG_SINGLE_LANE=1
 ExecStart=/path/to/your/workspace/scripts/runs/agent-msg/agent-msg-run.sh
 StandardOutput=journal
 StandardError=journal

@@ -5,6 +5,7 @@ gptmail, claude and build-system-prompt.sh are stubs, so no model session starts
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import stat
@@ -45,18 +46,33 @@ def _workspace(tmp_path: Path, pending: list[str]) -> dict:
     )
     gptmail = _exe(tmp_path / "gptmail", f"printf '{out}'\n")
     launches = tmp_path / "launches.log"
+    autonomous_lock = tmp_path / "autonomous.lock"
     claude = _exe(
         tmp_path / "claude",
-        f'echo LAUNCH >> "{launches}"\necho "$@" >> "{launches}.args"\n',
+        f'echo LAUNCH >> "{launches}"\necho "$@" >> "{launches}.args"\n'
+        f'echo "$AGENT_DISPATCH_CAUSE" >> "{launches}.cause"\n'
+        f'cat "{autonomous_lock}" >> "{launches}.lane" 2>/dev/null || true\n',
     )
     env = {
-        **os.environ,
-        "GPTMAIL_BIN": str(gptmail),
-        "CLAUDE_BIN": str(claude),
-        "AGENT_MSG_LOCKFILE": str(tmp_path / "slot.lock"),
-        "AGENT_MSG_STATE_DIR": str(tmp_path / "state"),
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("AGENT_DISPATCH_CAUSE", "INVOCATION_ID")
     }
-    return {"script": d / "agent-msg-run.sh", "env": env, "launches": launches}
+    env.update(
+        {
+            "GPTMAIL_BIN": str(gptmail),
+            "CLAUDE_BIN": str(claude),
+            "AGENT_MSG_LOCKFILE": str(tmp_path / "slot.lock"),
+            "AGENT_MSG_STATE_DIR": str(tmp_path / "state"),
+            "AGENT_MSG_AUTONOMOUS_LOCKFILE": str(autonomous_lock),
+        }
+    )
+    return {
+        "script": d / "agent-msg-run.sh",
+        "env": env,
+        "launches": launches,
+        "autonomous_lock": autonomous_lock,
+    }
 
 
 def _run(w: dict) -> subprocess.CompletedProcess[str]:
@@ -195,3 +211,146 @@ def test_claude_that_cannot_start_restores_an_existing_count(tmp_path: Path) -> 
     w["env"]["CLAUDE_BIN"] = str(tmp_path / "no-such-claude")
     assert _run(w).returncode == 127
     assert counter.read_text().strip() == "1"
+
+
+def _quota_gate(tmp_path: Path, allow: bool) -> Path:
+    gate = tmp_path / "quota-gate.sh"
+    gate.write_text(
+        f'quota_gate_check() {{ echo "$@" > "{tmp_path / "gate.args"}"; '
+        f"return {0 if allow else 1}; }}\n"
+    )
+    return gate
+
+
+def test_quota_gate_blocks_launch_and_leaves_attempts_unchanged(
+    tmp_path: Path,
+) -> None:
+    w = _workspace(tmp_path, [MSG])
+    w["env"]["AGENT_MSG_QUOTA_GATE_SCRIPT"] = str(_quota_gate(tmp_path, False))
+    r = _run(w)
+    assert r.returncode == 0, r.stderr
+    assert "quota gate blocked" in r.stdout
+    assert _launch_count(w) == 0
+    assert not (tmp_path / "state" / "attempts" / MSG).exists()
+
+
+def test_quota_gate_checks_the_session_model_and_allows_launch(
+    tmp_path: Path,
+) -> None:
+    w = _workspace(tmp_path, [MSG])
+    w["env"]["AGENT_MSG_QUOTA_GATE_SCRIPT"] = str(_quota_gate(tmp_path, True))
+    w["env"]["AGENT_MSG_MODEL"] = "haiku"
+    assert _run(w).returncode == 0
+    assert (tmp_path / "gate.args").read_text().split() == ["--model", "haiku"]
+    assert _launch_count(w) == 1
+
+
+def test_quota_gate_not_consulted_when_nothing_pending(tmp_path: Path) -> None:
+    w = _workspace(tmp_path, [])
+    w["env"]["AGENT_MSG_QUOTA_GATE_SCRIPT"] = str(_quota_gate(tmp_path, True))
+    assert _run(w).returncode == 0
+    assert not (tmp_path / "gate.args").exists()
+
+
+def test_session_is_attributed_to_the_inbox_trigger(tmp_path: Path) -> None:
+    w = _workspace(tmp_path, [MSG])
+    w["env"]["INVOCATION_ID"] = "abc123"
+    assert _run(w).returncode == 0
+    cause = json.loads(Path(f"{w['launches']}.cause").read_text())
+    assert cause == {"kind": "inbox", "id": "abc123"}
+
+
+def _live_holder(lock: Path) -> subprocess.Popen[bytes]:
+    holder = subprocess.Popen(["sleep", "20"])
+    lock.write_text(f"{holder.pid}\n")
+    return holder
+
+
+def test_default_mode_ignores_the_autonomous_lock(tmp_path: Path) -> None:
+    w = _workspace(tmp_path, [MSG])
+    holder = _live_holder(w["autonomous_lock"])
+    try:
+        assert _run(w).returncode == 0
+    finally:
+        holder.kill()
+        holder.wait()
+    assert _launch_count(w) == 1
+    # The scheduled run's lock is untouched.
+    assert w["autonomous_lock"].read_text().strip() == str(holder.pid)
+
+
+def test_single_lane_waits_for_a_running_scheduled_session(tmp_path: Path) -> None:
+    w = _workspace(tmp_path, [MSG])
+    w["env"]["AGENT_MSG_SINGLE_LANE"] = "1"
+    holder = _live_holder(w["autonomous_lock"])
+    try:
+        r = _run(w)
+    finally:
+        holder.kill()
+        holder.wait()
+    assert r.returncode == 0
+    assert "holds the single lane" in r.stdout
+    assert _launch_count(w) == 0
+    assert w["autonomous_lock"].read_text().strip() == str(holder.pid)
+    assert not (tmp_path / "state" / "attempts" / MSG).exists()
+
+
+def test_single_lane_holds_the_autonomous_lock_during_the_session(
+    tmp_path: Path,
+) -> None:
+    w = _workspace(tmp_path, [MSG])
+    w["env"]["AGENT_MSG_SINGLE_LANE"] = "1"
+    r = _run(w)
+    assert r.returncode == 0, r.stderr
+    assert _launch_count(w) == 1
+    # The session ran under a PID lock a scheduled run would refuse, and the
+    # lock was released afterwards.
+    lane_pid = Path(f"{w['launches']}.lane").read_text().strip()
+    assert lane_pid.isdigit()
+    assert not w["autonomous_lock"].exists()
+
+
+def test_single_lane_replaces_a_stale_autonomous_lock(tmp_path: Path) -> None:
+    w = _workspace(tmp_path, [MSG])
+    w["env"]["AGENT_MSG_SINGLE_LANE"] = "1"
+    dead = subprocess.Popen(["true"])
+    dead.wait()
+    w["autonomous_lock"].write_text(f"{dead.pid}\n")
+    assert _run(w).returncode == 0
+    assert _launch_count(w) == 1
+    assert not w["autonomous_lock"].exists()
+
+
+def test_single_lane_lock_refuses_a_real_scheduled_run(tmp_path: Path) -> None:
+    """Controlled test: the real autonomous-run-cc.sh, started mid-session, is refused."""
+    w = _workspace(tmp_path, [MSG])
+    w["env"]["AGENT_MSG_SINGLE_LANE"] = "1"
+    runner_src = SCRIPT.parents[1] / "autonomous" / "autonomous-run-cc.sh"
+    text = runner_src.read_text()
+    marker = 'LOCKFILE="/tmp/${AGENT_NAME,,}-autonomous.lock"'
+    assert marker in text, "runner lock path changed; update the single-lane adapter"
+    # Own workspace, so a runner that got past the lock would find no git repo,
+    # no prompt builder and only a stub `claude` (scripts/ is first on its PATH).
+    runner_ws = tmp_path / "runner-ws"
+    (runner_ws / "scripts" / "runs" / "autonomous").mkdir(parents=True)
+    runner = runner_ws / "scripts" / "runs" / "autonomous" / "autonomous-run-cc.sh"
+    runner.write_text(text.replace(marker, f'LOCKFILE="{w["autonomous_lock"]}"'))
+    _exe(
+        runner_ws / "scripts" / "claude",
+        f'echo RUNNER-LAUNCHED >> "{tmp_path / "runner.out"}"\n',
+    )
+    home = tmp_path / "home"
+    home.mkdir()
+    out = tmp_path / "runner.out"
+    # The stub "session" starts a scheduled run while the message session is live.
+    _exe(
+        Path(w["env"]["CLAUDE_BIN"]),
+        f'echo LAUNCH >> "{w["launches"]}"\n'
+        f'HOME="{home}" bash "{runner}" > "{out}" 2>&1; echo "rc=$?" >> "{out}"\n',
+    )
+    assert _run(w).returncode == 0
+    assert _launch_count(w) == 1
+    result = out.read_text()
+    assert "Another autonomous run is active" in result, result
+    assert "rc=1" in result
+    assert not w["autonomous_lock"].exists()
