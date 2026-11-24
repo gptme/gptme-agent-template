@@ -15,6 +15,8 @@ import stat
 import subprocess
 from pathlib import Path
 
+import pytest
+
 RUNNER = (
     Path(__file__).resolve().parents[1]
     / "scripts"
@@ -266,16 +268,19 @@ def test_parent_session_is_passed_through(tmp_path: Path) -> None:
     assert json.loads(captured["AGENT_DISPATCH_CAUSE"])["parent_session_id"] == parent
 
 
-def test_terminated_runner_stops_gptme(tmp_path: Path) -> None:
+@pytest.mark.parametrize("ignores_term", [False, True])
+def test_terminated_runner_stops_gptme(tmp_path: Path, ignores_term: bool) -> None:
     """SIGTERM to the runner (manual or cron run, outside systemd's cgroup kill)
     must stop gptme. gptme's parent is `timeout`, not the runner, so cleanup's
-    `pkill -P $$ gptme` used to match nothing and leave gptme orphaned."""
+    `pkill -P $$ gptme` used to match nothing and leave gptme orphaned. A gptme
+    that ignores SIGTERM is force-stopped after the grace period."""
     import time
 
     _setup_workspace(tmp_path)
     pidfile = tmp_path / "gptme.pid"
     gptme = tmp_path / "bin" / "gptme"
-    gptme.write_text(f"#!/bin/bash\necho $$ > '{pidfile}'\nexec sleep 30\n")
+    trap = "trap '' TERM\n" if ignores_term else ""
+    gptme.write_text(f"#!/bin/bash\n{trap}echo $$ > '{pidfile}'\nexec sleep 30\n")
     script = tmp_path / "scripts" / "runs" / "autonomous" / "autonomous-run.sh"
     env = {
         "PATH": f"{tmp_path}/bin:/usr/bin:/bin",
@@ -354,10 +359,31 @@ def test_pull_conflict_does_not_leave_unmerged_files(tmp_path: Path) -> None:
     (tmp_path / "state.md").write_text("local edit\n")
     git("commit", "-qam", "local")
 
-    _run(
+    upstream = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=other,
+        env=genv,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    result = _run(
         tmp_path,
         {**genv, "PATH": f"{tmp_path}/bin:/usr/bin:/bin", "FORCE_SESSION": "1"},
     )
 
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "CONFLICT" in result.stdout, "the pull never hit the conflict"
+    assert "Git pull failed" in result.stdout
+    fetched = subprocess.run(
+        ["git", "rev-parse", "origin/master"],
+        cwd=tmp_path,
+        env=genv,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert fetched == upstream
     assert not (tmp_path / ".git" / "MERGE_HEAD").exists(), "left mid-merge"
-    assert "<<<<<<<" not in (tmp_path / "state.md").read_text()
+    assert (tmp_path / "state.md").read_text() == "local edit\n"
