@@ -264,3 +264,53 @@ def test_parent_session_is_passed_through(tmp_path: Path) -> None:
     parent = "22222222-2222-4222-8222-222222222222"
     captured = _capture_identity(tmp_path, {"AGENT_PARENT_SESSION_ID": parent})
     assert json.loads(captured["AGENT_DISPATCH_CAUSE"])["parent_session_id"] == parent
+
+
+def test_terminated_runner_stops_gptme(tmp_path: Path) -> None:
+    """SIGTERM to the runner (manual or cron run, outside systemd's cgroup kill)
+    must stop gptme. gptme's parent is `timeout`, not the runner, so cleanup's
+    `pkill -P $$ gptme` used to match nothing and leave gptme orphaned."""
+    import time
+
+    _setup_workspace(tmp_path)
+    pidfile = tmp_path / "gptme.pid"
+    gptme = tmp_path / "bin" / "gptme"
+    gptme.write_text(f"#!/bin/bash\necho $$ > '{pidfile}'\nexec sleep 30\n")
+    script = tmp_path / "scripts" / "runs" / "autonomous" / "autonomous-run.sh"
+    env = {
+        "PATH": f"{tmp_path}/bin:/usr/bin:/bin",
+        "HOME": str(tmp_path),
+        "FORCE_SESSION": "1",
+    }
+    runner = subprocess.Popen(
+        ["bash", str(script)],
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    gptme_pid = 0
+    try:
+        for _ in range(100):
+            if pidfile.exists() and pidfile.read_text().strip():
+                break
+            time.sleep(0.1)
+        gptme_pid = int(pidfile.read_text())
+        runner.terminate()
+        runner.wait(timeout=15)
+        for _ in range(50):
+            try:
+                os.kill(gptme_pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.1)
+        else:
+            raise AssertionError("gptme still running after runner was terminated")
+    finally:
+        if runner.poll() is None:
+            runner.kill()
+        if gptme_pid:
+            try:
+                os.kill(gptme_pid, 9)
+            except ProcessLookupError:
+                pass

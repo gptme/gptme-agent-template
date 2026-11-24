@@ -72,8 +72,13 @@ acquire_lock() {
 }
 
 release_lock() {
+    # Only remove a lock we own: a run refused by acquire_lock also exits
+    # through this trap, and must not delete the live run's lock.
     # shellcheck disable=SC2317  # Called by trap, not directly
-    rm -f "$LOCKFILE"
+    if [ "$(cat "$LOCKFILE" 2>/dev/null)" = "$$" ]; then
+        # shellcheck disable=SC2317  # Called by trap, not directly
+        rm -f "$LOCKFILE"
+    fi
 }
 
 trap release_lock EXIT INT TERM HUP

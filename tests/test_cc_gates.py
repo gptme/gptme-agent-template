@@ -201,3 +201,26 @@ def test_session_gate_error_fails_open(tmp_path: Path) -> None:
     gate.write_text("import sys; sys.exit(2)\n")
     rc = _run(tmp_path)
     assert rc == 0
+
+
+def _lockfile(tmp_path: Path) -> Path:
+    agent_name = "TestAgent" + hashlib.sha256(str(tmp_path).encode()).hexdigest()[:16]
+    return Path("/tmp") / f"{agent_name.lower()}-autonomous.lock"
+
+
+def test_refused_run_keeps_live_runs_lock(tmp_path: Path) -> None:
+    """A run refused by a live lock must not delete that lock on its way out,
+    or the next run starts alongside the live one."""
+    _setup_workspace(tmp_path)
+    lock = _lockfile(tmp_path)
+    holder = subprocess.Popen(["sleep", "30"])
+    try:
+        lock.write_text(f"{holder.pid}\n")
+        rc = _run(tmp_path, {"FORCE_SESSION": "1"})
+        assert rc == 1
+        assert lock.exists(), "refused run removed the live run's lock"
+        assert lock.read_text().strip() == str(holder.pid)
+    finally:
+        holder.kill()
+        holder.wait()
+        lock.unlink(missing_ok=True)

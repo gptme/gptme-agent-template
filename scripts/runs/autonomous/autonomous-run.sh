@@ -35,9 +35,10 @@ log() {
 cleanup() {
     # shellcheck disable=SC2317  # Called by trap, not directly
     log "Cleaning up..."
-    # Kill any gptme child processes
+    # Stop any remaining children. gptme runs under `timeout`, so it is a
+    # grandchild: signal our direct children and `timeout` forwards the TERM.
     # shellcheck disable=SC2317  # Called by trap, not directly
-    pkill -P $$ gptme 2>/dev/null || true
+    pkill -TERM -P $$ 2>/dev/null || true
     # shellcheck disable=SC2317  # Called by trap, not directly
     sleep 1
     # Clean up temporary prompt file. Guard the unset case so an early skip
