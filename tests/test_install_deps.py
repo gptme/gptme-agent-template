@@ -72,3 +72,45 @@ def test_new_enough_python_not_flagged(
     result = _run_with_python(tmp_path, version)
     assert "too old" not in result.stdout
     assert "python3>=3.11.5" not in result.stdout
+
+
+def _path_without(tmp_path: Path, missing: set[str]) -> str:
+    """A PATH dir shadowing every executable on PATH except the `missing` names."""
+    shadow = tmp_path / "shadow-bin"
+    shadow.mkdir()
+    for entry in os.environ["PATH"].split(os.pathsep):
+        d = Path(entry)
+        if not d.is_dir():
+            continue
+        for exe in d.iterdir():
+            if exe.name in missing or (shadow / exe.name).exists():
+                continue
+            if exe.is_file() and os.access(exe, os.X_OK):
+                (shadow / exe.name).symlink_to(exe)
+    return str(shadow)
+
+
+def test_missing_recommended_tool_does_not_abort(tmp_path: Path) -> None:
+    """A missing *recommended* tool is reported, not fatal: the run still
+    reaches the later checks and the summary (set -e used to exit at it)."""
+    home = tmp_path / "home"
+    home.mkdir()
+    env = {
+        **os.environ,
+        "PATH": _path_without(tmp_path, {"tree"}),
+        "NO_COLOR": "1",
+        "HOME": str(home),
+        "CLAUDE_HOME": str(home / ".claude"),
+        "WORKSPACE": str(tmp_path / "workspace"),
+    }
+    result = subprocess.run(
+        ["bash", str(SCRIPT)],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=120,
+        check=False,
+    )
+    assert "tree: not found" in result.stdout
+    assert "Memory bridge:" in result.stdout, result.stdout
+    assert "Missing" in result.stdout and "tree" in result.stdout.split("Missing")[-1]

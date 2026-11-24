@@ -48,9 +48,10 @@ usage() {
 }
 
 # Claude Code mangles the absolute workspace path into its project dir name by
-# replacing '/' and '.' with '-'. e.g. /home/agent/workspace -> -home-agent-workspace
+# replacing every non-alphanumeric character ('/', '.', '_', ...) with '-'.
+# e.g. /home/agent/my_workspace -> -home-agent-my-workspace
 mangle_path() {
-    printf '%s' "$1" | sed 's#[/.]#-#g'
+    printf '%s' "$1" | sed 's#[^A-Za-z0-9]#-#g'
 }
 
 CHECK_ONLY=0
@@ -125,7 +126,14 @@ elif [ -d "$BRIDGE" ]; then
         dest="$REPO_MEMORY/$name"
         if [ -e "$dest" ]; then
             echo "setup-memory: WARNING keeping repo copy of '$name' (bridge copy parked as .bridge-backup)" >&2
-            mv "$src" "$BRIDGE/$name.bridge-backup"
+            # Never overwrite a copy parked by an earlier run: pick a free name.
+            backup="$BRIDGE/$name.bridge-backup"
+            n=1
+            while [ -e "$backup" ]; do
+                backup="$BRIDGE/$name.bridge-backup.$n"
+                n=$((n + 1))
+            done
+            mv "$src" "$backup"
         else
             mv "$src" "$dest"
             migrated=$((migrated + 1))

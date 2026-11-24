@@ -385,7 +385,9 @@ fi
 # no-op on a pure-gptme host (no ~/.claude), it creates the Claude Code bridge
 # symlink into memory/ otherwise, so a fresh fork's memory is version-controlled
 # from the start instead of silently landing outside the repo.
-(cd "${TARGET_DIR}" && WORKSPACE="${TARGET_DIR}" scripts/setup-memory.sh) || true
+# WORKSPACE must be absolute: TARGET_DIR may be relative (./name), and inside
+# the subshell it would resolve a second time below the target.
+(cd "${TARGET_DIR}" && WORKSPACE="$(pwd)" scripts/setup-memory.sh) || true
 
 # Create initial setup task from template
 cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
