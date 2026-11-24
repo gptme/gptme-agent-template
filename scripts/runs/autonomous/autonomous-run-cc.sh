@@ -139,7 +139,8 @@ git_op_in_progress() {
     return 1
 }
 if git_op_in_progress; then
-    log "WARN: a merge or rebase is already in progress — skipping pull"
+    log "ERROR: a merge or rebase is already in progress — resolve it before the next run"
+    exit 1
 else
     log "Pulling latest changes..."
     git pull --rebase --autostash 2>&1 || {

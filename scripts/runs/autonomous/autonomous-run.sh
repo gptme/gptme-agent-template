@@ -143,7 +143,8 @@ git_op_in_progress() {
     return 1
 }
 if git_op_in_progress; then
-    log "WARNING: a merge or rebase is already in progress, skipping pull"
+    log "ERROR: a merge or rebase is already in progress, resolve it before the next run"
+    exit 1
 elif ! git pull; then
     log "WARNING: Git pull failed, continuing with current state"
     # A conflicting pull (merge or pull.rebase) would leave unmerged files that

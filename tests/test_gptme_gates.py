@@ -304,9 +304,15 @@ def test_terminated_runner_stops_gptme(tmp_path: Path, ignores_term: bool) -> No
         runner.terminate()
         runner.wait(timeout=15)
         for _ in range(50):
-            try:
-                os.kill(gptme_pid, 0)
-            except ProcessLookupError:
+            # kill(pid, 0) also succeeds for zombies in containers whose PID 1
+            # does not reap promptly. They have exited and cannot keep running.
+            status = subprocess.run(
+                ["ps", "-o", "stat=", "-p", str(gptme_pid)],
+                capture_output=True,
+                text=True,
+                check=False,
+            ).stdout.strip()
+            if not status or status.startswith("Z"):
                 break
             time.sleep(0.1)
         else:
@@ -387,3 +393,55 @@ def test_pull_conflict_does_not_leave_unmerged_files(tmp_path: Path) -> None:
     assert fetched == upstream
     assert not (tmp_path / ".git" / "MERGE_HEAD").exists(), "left mid-merge"
     assert (tmp_path / "state.md").read_text() == "local edit\n"
+
+
+@pytest.mark.parametrize("operation", ["rebase", "merge"])
+def test_existing_git_operation_stops_before_agent(
+    tmp_path: Path, operation: str
+) -> None:
+    """Even with all conflicts staged, leave the operator's operation alone."""
+    marker = _setup_workspace(tmp_path)
+    (tmp_path / "bin" / "git").unlink()
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(tmp_path),
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+
+    def git(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", *args],
+            cwd=tmp_path,
+            env=env,
+            check=check,
+            capture_output=True,
+            text=True,
+        )
+
+    git("init", "-q", "-b", "master")
+    (tmp_path / "state.md").write_text("base\n")
+    git("add", "state.md")
+    git("commit", "-qm", "base")
+    git("checkout", "-qb", "other")
+    (tmp_path / "state.md").write_text("other\n")
+    git("commit", "-qam", "other")
+    git("checkout", "-q", "master")
+    (tmp_path / "state.md").write_text("local\n")
+    git("commit", "-qam", "local")
+    assert git(operation, "other", check=False).returncode != 0
+    (tmp_path / "state.md").write_text("resolved\n")
+    git("add", "state.md")
+    assert not git("diff", "--name-only", "--diff-filter=U").stdout
+
+    result = _run(tmp_path, {"FORCE_SESSION": "1"})
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "already in progress" in result.stdout
+    op_path = "rebase-merge" if operation == "rebase" else "MERGE_HEAD"
+    assert (tmp_path / ".git" / op_path).exists(), "operation was aborted"
+    assert git("show", ":state.md").stdout == "resolved\n"
+    assert not marker.exists(), "agent started during an unfinished git operation"

@@ -14,6 +14,8 @@ import stat
 import subprocess
 from pathlib import Path
 
+import pytest
+
 RUNNER = (
     Path(__file__).resolve().parents[1]
     / "scripts"
@@ -303,12 +305,15 @@ def test_pull_conflict_does_not_leave_repo_mid_rebase(tmp_path: Path) -> None:
     assert (tmp_path / "state.md").read_text() == "local edit\n"
 
 
-def test_pull_leaves_existing_rebase_untouched(tmp_path: Path) -> None:
-    """A rebase already in progress, with a staged resolution, is not aborted."""
+@pytest.mark.parametrize("operation", ["rebase", "merge"])
+def test_pull_leaves_existing_rebase_untouched(tmp_path: Path, operation: str) -> None:
+    """A staged resolution survives, and no agent starts during the operation."""
     _diverged_repo(tmp_path, local_commit=True)
+    marker = tmp_path / "claude-ran"
+    (tmp_path / "bin" / "claude").write_text(f"#!/bin/bash\ntouch '{marker}'\n")
     _git(tmp_path, "fetch", "-q", "origin")
     rebase = subprocess.run(
-        ["git", "rebase", "origin/master"],
+        ["git", operation, "origin/master"],
         cwd=tmp_path,
         env={**_GIT_ENV, "HOME": str(tmp_path)},
         capture_output=True,
@@ -319,9 +324,12 @@ def test_pull_leaves_existing_rebase_untouched(tmp_path: Path) -> None:
 
     result = _run_result(tmp_path, {"FORCE_SESSION": "1"})
 
+    assert result.returncode == 1, result.stdout + result.stderr
     assert "already in progress" in result.stdout, result.stdout
-    assert (tmp_path / ".git" / "rebase-merge").exists(), "rebase was aborted"
+    op_path = "rebase-merge" if operation == "rebase" else "MERGE_HEAD"
+    assert (tmp_path / ".git" / op_path).exists(), "operation was aborted"
     assert _git(tmp_path, "show", ":state.md") == "resolved\n"
+    assert not marker.exists(), "agent started during an unfinished git operation"
 
 
 def test_pull_with_autostash_conflict_stops_run(tmp_path: Path) -> None:
