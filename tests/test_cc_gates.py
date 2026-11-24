@@ -12,6 +12,7 @@ import hashlib
 import json
 import stat
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -256,6 +257,28 @@ def test_refused_run_keeps_live_runs_lock(tmp_path: Path) -> None:
         holder.kill()
         holder.wait()
         lock.unlink(missing_ok=True)
+
+
+def test_run_refused_while_another_process_holds_the_flock(tmp_path: Path) -> None:
+    """Simultaneous start: a holder that has the flock but no PID in the file
+    yet (another runner, or the agent-msg single-lane pickup) still wins."""
+    _setup_workspace(tmp_path)
+    lock = _lockfile(tmp_path)
+    ready = tmp_path / "flock.ready"
+    holder = subprocess.Popen(
+        ["bash", "-c", f'exec 8>>"{lock}"; flock -n 8 && touch "{ready}"; sleep 30']
+    )
+    try:
+        for _ in range(100):
+            if ready.exists():
+                break
+            time.sleep(0.1)
+        assert ready.exists(), "holder never acquired the flock"
+        rc = _run(tmp_path, {"FORCE_SESSION": "1"})
+        assert rc == 1
+    finally:
+        holder.kill()
+        holder.wait()
 
 
 _GIT_ENV = {

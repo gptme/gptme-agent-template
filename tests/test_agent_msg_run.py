@@ -57,6 +57,7 @@ def _workspace(tmp_path: Path, pending: list[str]) -> dict:
         k: v
         for k, v in os.environ.items()
         if k not in ("AGENT_DISPATCH_CAUSE", "INVOCATION_ID")
+        and not k.startswith("AGENT_MSG_")
     }
     env.update(
         {
@@ -307,7 +308,7 @@ def test_single_lane_holds_the_autonomous_lock_during_the_session(
     # lock was released afterwards.
     lane_pid = Path(f"{w['launches']}.lane").read_text().strip()
     assert lane_pid.isdigit()
-    assert not w["autonomous_lock"].exists()
+    assert w["autonomous_lock"].read_text() == ""  # released: emptied, kept
 
 
 def test_single_lane_replaces_a_stale_autonomous_lock(tmp_path: Path) -> None:
@@ -318,7 +319,7 @@ def test_single_lane_replaces_a_stale_autonomous_lock(tmp_path: Path) -> None:
     w["autonomous_lock"].write_text(f"{dead.pid}\n")
     assert _run(w).returncode == 0
     assert _launch_count(w) == 1
-    assert not w["autonomous_lock"].exists()
+    assert w["autonomous_lock"].read_text() == ""  # released: emptied, kept
 
 
 def test_single_lane_lock_refuses_a_real_scheduled_run(tmp_path: Path) -> None:
@@ -353,4 +354,45 @@ def test_single_lane_lock_refuses_a_real_scheduled_run(tmp_path: Path) -> None:
     result = out.read_text()
     assert "Another autonomous run is active" in result, result
     assert "rc=1" in result
-    assert not w["autonomous_lock"].exists()
+    assert w["autonomous_lock"].read_text() == ""  # released: emptied, kept
+
+
+def test_single_lane_refuses_while_another_process_holds_the_flock(
+    tmp_path: Path,
+) -> None:
+    """Simultaneous start: a runner that has the flock but has not written its
+    PID yet must still win; the PID file alone would look free."""
+    w = _workspace(tmp_path, [MSG])
+    w["env"]["AGENT_MSG_SINGLE_LANE"] = "1"
+    ready = tmp_path / "flock.ready"
+    lock = w["autonomous_lock"]
+    holder = subprocess.Popen(
+        ["bash", "-c", f'exec 8>>"{lock}"; flock -n 8 && touch "{ready}"; sleep 20']
+    )
+    try:
+        for _ in range(100):
+            if ready.exists():
+                break
+            time.sleep(0.1)
+        assert ready.exists(), "holder never acquired the flock"
+        r = _run(w)
+    finally:
+        holder.kill()
+        holder.wait()
+    assert r.returncode == 0
+    assert "slot occupied" in r.stdout
+    assert _launch_count(w) == 0
+    assert not (tmp_path / "state" / "attempts" / MSG).exists()
+
+
+def test_single_lane_unopenable_lock_is_an_error_not_a_busy_slot(
+    tmp_path: Path,
+) -> None:
+    w = _workspace(tmp_path, [MSG])
+    w["env"]["AGENT_MSG_SINGLE_LANE"] = "1"
+    w["env"]["AGENT_MSG_AUTONOMOUS_LOCKFILE"] = str(tmp_path / "missing" / "x.lock")
+    r = _run(w)
+    assert r.returncode == 1
+    assert "cannot open the autonomous lock" in r.stdout
+    assert "slot occupied" not in r.stdout
+    assert _launch_count(w) == 0

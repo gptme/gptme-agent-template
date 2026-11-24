@@ -116,31 +116,35 @@ OWN_AUTONOMOUS_LOCK=0
 # shellcheck disable=SC2317  # called by the EXIT trap
 cleanup() {
     [ -n "$SYSPROMPT_FILE" ] && rm -f "$SYSPROMPT_FILE"
-    # Only remove an autonomous lock this run wrote, as autonomous-run-cc.sh does.
+    # Clear only a PID this run wrote, and truncate rather than delete, as
+    # autonomous-run-cc.sh does. Exiting closes fd 8 and releases the flock.
     if [ "$OWN_AUTONOMOUS_LOCK" -eq 1 ] && [ "$(cat "$AUTONOMOUS_LOCKFILE" 2>/dev/null)" = "$$" ]; then
-        rm -f "$AUTONOMOUS_LOCKFILE"
+        : >"$AUTONOMOUS_LOCKFILE"
     fi
 }
 trap cleanup EXIT
 
 # --- Single lane (opt-in) --------------------------------------------------
-# Use the autonomous runner's PID-file protocol rather than flock on its file:
-# `exec 9>` would truncate the PID it wrote. While this session holds the lock,
-# a scheduled run refuses to start; while a scheduled run holds it, this exits
-# and the retry timer re-checks. One session, no chaining.
+# Take the same flock as autonomous-run-cc.sh (fd 8, opened with >> so the
+# runner's PID is never truncated). While this session holds it, a scheduled
+# run refuses to start; while a scheduled run holds it, this exits and the
+# retry timer re-checks. One session, no chaining.
 if [ "$SINGLE_LANE" = "1" ]; then
+    if ! { exec 8>>"$AUTONOMOUS_LOCKFILE"; } 2>/dev/null; then
+        log "ERROR: cannot open the autonomous lock $AUTONOMOUS_LOCKFILE; check AGENT_MSG_AUTONOMOUS_LOCKFILE"
+        exit 1
+    fi
+    if ! flock -n 8; then
+        log "slot occupied: a scheduled autonomous run holds the single lane; the retry timer will re-check"
+        exit 0
+    fi
+    # A live PID without the flock is a runner from before the flock change.
     holder="$(cat "$AUTONOMOUS_LOCKFILE" 2>/dev/null || true)"
     if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
         log "slot occupied: scheduled autonomous run (PID $holder) holds the single lane; the retry timer will re-check"
         exit 0
     fi
-    [ -e "$AUTONOMOUS_LOCKFILE" ] && rm -f "$AUTONOMOUS_LOCKFILE"
-    # noclobber makes the create atomic: if a scheduled run wrote the file
-    # between the check and here, this run loses and exits.
-    if ! (set -C; echo $$ >"$AUTONOMOUS_LOCKFILE") 2>/dev/null; then
-        log "slot occupied: a scheduled autonomous run took the single lane first; the retry timer will re-check"
-        exit 0
-    fi
+    echo $$ >"$AUTONOMOUS_LOCKFILE"
     OWN_AUTONOMOUS_LOCK=1
 fi
 
@@ -193,12 +197,15 @@ fi
 
 unset CLAUDECODE CLAUDE_CODE_ENTRYPOINT 2>/dev/null || true
 
+# 8>&- 9>&-: keep the lock fds out of the session, so a background process it
+# leaves behind cannot hold a lock and block every later pickup.
+
 EXIT_CODE=0
 timeout "$SCRIPT_TIMEOUT" "$CLAUDE_BIN" -p \
     --dangerously-skip-permissions \
     --model "$MODEL" \
     --append-system-prompt-file "$SYSPROMPT_FILE" \
-    "$PROMPT" </dev/null || EXIT_CODE=$?
+    "$PROMPT" </dev/null 8>&- 9>&- || EXIT_CODE=$?
 
 # timeout exits 126/127 when it cannot run $CLAUDE_BIN at all (not executable /
 # not found). No session ran, so those dispatches must not count toward the cap:

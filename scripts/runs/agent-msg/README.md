@@ -87,7 +87,8 @@ By default the script has its own lock, so a message session and a scheduled aut
 session can run at the same time. An agent that cannot afford two sessions sets
 `AGENT_MSG_SINGLE_LANE=1` (see the commented line in the service unit). The script then
 takes the scheduled runner's lock (`/tmp/<agent>-autonomous.lock`, override with
-`AGENT_MSG_AUTONOMOUS_LOCKFILE`) for the length of the message session:
+`AGENT_MSG_AUTONOMOUS_LOCKFILE`) for the length of the message session. Both scripts take
+a non-blocking `flock` on that file, so two simultaneous starts cannot both win:
 
 - A scheduled run is active: the script logs `slot occupied` and exits 0 without
   launching or counting an attempt. The retry timer picks the message up afterwards.
@@ -98,20 +99,23 @@ takes the scheduled runner's lock (`/tmp/<agent>-autonomous.lock`, override with
 What single-lane mode does **not** do: it does not skip the quota gate, and it does not
 run the scheduled runner's session gate. That gate decides whether there is any trigger
 at all; here the trigger is the pending message itself, as `gptmail agent pending`
-defines it. It uses the PID-file protocol of `autonomous-run-cc.sh`. `autonomous-run.sh` (the
-gptme runner) has no lock, so single-lane mode gives no exclusion against it.
+defines it. `autonomous-run.sh` (the gptme runner) has no lock, so single-lane mode gives
+no exclusion against it. A lock path that cannot be opened is a service error, not a
+busy slot.
 
 Do not point `AGENT_MSG_LOCKFILE` at the autonomous lock instead: the script opens that
-file for writing, which truncates the PID the scheduled runner wrote and breaks its lock.
+file with `>`, which truncates the PID the scheduled runner wrote.
 
 To turn single-lane mode off, remove the `Environment=` line and run
-`systemctl --user daemon-reload`. A stale lock left by a killed message session is
-detected by PID and replaced by the next run of either script; nothing needs cleaning by hand.
+`systemctl --user daemon-reload`. The kernel releases the flock when a holder exits, and
+a stale PID left by a killed process is replaced by the next run of either script;
+nothing needs cleaning by hand. The lock file itself stays in place by design.
 
 ## Disable and remove
 
 ```bash
 systemctl --user disable --now agent-msg-run.path agent-msg-run.timer
+systemctl --user stop agent-msg-run.service   # ends a pickup still running
 rm ~/.config/systemd/user/agent-msg-run.{path,service,timer}
 systemctl --user daemon-reload
 rm -rf state/agent-msg   # attempt counters only

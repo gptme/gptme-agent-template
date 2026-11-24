@@ -58,26 +58,37 @@ log() {
 LOCKFILE="/tmp/${AGENT_NAME,,}-autonomous.lock"
 
 acquire_lock() {
-    if [ -f "$LOCKFILE" ]; then
-        local pid
+    # flock makes check-and-take atomic, so two runners (or this runner and the
+    # agent-msg single-lane pickup) cannot both start. Open with >> so a refused
+    # opener never truncates the holder's PID, and never unlink the file: a
+    # second runner could flock a fresh inode at the same path. The PID check
+    # still refuses a live holder that only wrote a PID (an older runner).
+    exec 8>>"$LOCKFILE"
+    local pid
+    if ! flock -n 8; then
         pid=$(cat "$LOCKFILE" 2>/dev/null || echo "")
-        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-            log "ERROR: Another autonomous run is active (PID $pid)"
-            exit 1
-        fi
-        log "WARN: Stale lock from PID $pid, removing"
-        rm -f "$LOCKFILE"
+        log "ERROR: Another autonomous run is active (PID ${pid:-unknown})"
+        exit 1
+    fi
+    pid=$(cat "$LOCKFILE" 2>/dev/null || echo "")
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+        log "ERROR: Another autonomous run is active (PID $pid)"
+        exit 1
+    fi
+    if [ -n "$pid" ]; then
+        log "WARN: Stale lock from PID $pid, replacing"
     fi
     echo $$ > "$LOCKFILE"
 }
 
 release_lock() {
-    # Only remove a lock we own: a run refused by acquire_lock also exits
-    # through this trap, and must not delete the live run's lock.
+    # Only clear a lock we own: a run refused by acquire_lock also exits
+    # through this trap, and must not clear the live run's PID. Truncate rather
+    # than delete (see acquire_lock); closing fd 8 at exit releases the flock.
     # shellcheck disable=SC2317  # Called by trap, not directly
     if [ "$(cat "$LOCKFILE" 2>/dev/null)" = "$$" ]; then
         # shellcheck disable=SC2317  # Called by trap, not directly
-        rm -f "$LOCKFILE"
+        : > "$LOCKFILE"
     fi
 }
 
@@ -306,6 +317,8 @@ unset CLAUDE_CODE_ENTRYPOINT 2>/dev/null || true
 
 # Run Claude Code
 # IMPORTANT: </dev/null prevents SIGSTOP in non-interactive contexts (tmux, systemd)
+# 8>&- keeps the lock fd out of the session: a background process it leaves
+# behind would otherwise hold the flock and block every later run.
 # Capture the exit code with `|| EXIT_CODE=$?` so `set -e` does not abort the script
 # on a non-zero exit (timeout=124, or claude erroring). Without this guard the
 # timeout branch and the git-push safety net below are unreachable on exactly the
@@ -316,7 +329,7 @@ timeout "$SCRIPT_TIMEOUT" claude -p \
     --model "$MODEL" \
     "${SESSION_ID_ARGS[@]}" \
     --append-system-prompt-file "$SYSPROMPT_FILE" \
-    "$PROMPT" </dev/null || EXIT_CODE=$?
+    "$PROMPT" </dev/null 8>&- || EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 124 ]; then
     log "Session timed out after ${SCRIPT_TIMEOUT}s"
