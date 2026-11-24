@@ -64,11 +64,21 @@ acquire_lock() {
     # second runner could flock a fresh inode at the same path. The PID check
     # still refuses a live holder that only wrote a PID (an older runner).
     exec 8>>"$LOCKFILE"
-    local pid
-    if ! flock -n 8; then
-        pid=$(cat "$LOCKFILE" 2>/dev/null || echo "")
-        log "ERROR: Another autonomous run is active (PID ${pid:-unknown})"
-        exit 1
+    local pid rc=0
+    if command -v flock >/dev/null 2>&1; then
+        flock -n -E 75 8 || rc=$?
+        if [ "$rc" -eq 75 ]; then
+            pid=$(cat "$LOCKFILE" 2>/dev/null || echo "")
+            log "ERROR: Another autonomous run is active (PID ${pid:-unknown})"
+            exit 1
+        elif [ "$rc" -ne 0 ]; then
+            log "ERROR: flock on $LOCKFILE failed (exit $rc), not a held lock"
+            exit 1
+        fi
+    else
+        # No util-linux flock (e.g. macOS): the PID check below is the only guard,
+        # and two simultaneous starts can both pass it.
+        log "WARN: flock not found; falling back to the PID-only lock check"
     fi
     pid=$(cat "$LOCKFILE" 2>/dev/null || echo "")
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
@@ -317,19 +327,20 @@ unset CLAUDE_CODE_ENTRYPOINT 2>/dev/null || true
 
 # Run Claude Code
 # IMPORTANT: </dev/null prevents SIGSTOP in non-interactive contexts (tmux, systemd)
-# 8>&- keeps the lock fd out of the session: a background process it leaves
-# behind would otherwise hold the flock and block every later run.
+# `timeout` keeps the lock fd, so the lock lives as long as the session; the
+# shim closes it just before exec'ing claude, so a background process the
+# session leaves behind cannot hold the flock and block every later run.
 # Capture the exit code with `|| EXIT_CODE=$?` so `set -e` does not abort the script
 # on a non-zero exit (timeout=124, or claude erroring). Without this guard the
 # timeout branch and the git-push safety net below are unreachable on exactly the
 # failing runs we most want them to handle.
 EXIT_CODE=0
-timeout "$SCRIPT_TIMEOUT" claude -p \
+timeout "$SCRIPT_TIMEOUT" bash -c 'exec 8>&- "$@"' _ claude -p \
     --dangerously-skip-permissions \
     --model "$MODEL" \
     "${SESSION_ID_ARGS[@]}" \
     --append-system-prompt-file "$SYSPROMPT_FILE" \
-    "$PROMPT" </dev/null 8>&- || EXIT_CODE=$?
+    "$PROMPT" </dev/null || EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 124 ]; then
     log "Session timed out after ${SCRIPT_TIMEOUT}s"

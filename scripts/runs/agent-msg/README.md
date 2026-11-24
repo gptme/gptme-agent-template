@@ -88,7 +88,8 @@ session can run at the same time. An agent that cannot afford two sessions sets
 `AGENT_MSG_SINGLE_LANE=1` (see the commented line in the service unit). The script then
 takes the scheduled runner's lock (`/tmp/<agent>-autonomous.lock`, override with
 `AGENT_MSG_AUTONOMOUS_LOCKFILE`) for the length of the message session. Both scripts take
-a non-blocking `flock` on that file, so two simultaneous starts cannot both win:
+a non-blocking `flock` (util-linux) on that file, so two simultaneous starts cannot both
+win. Without `flock`, the scheduled runner warns and falls back to its PID check:
 
 - A scheduled run is active: the script logs `slot occupied` and exits 0 without
   launching or counting an attempt. The retry timer picks the message up afterwards.

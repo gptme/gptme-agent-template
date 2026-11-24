@@ -134,9 +134,14 @@ if [ "$SINGLE_LANE" = "1" ]; then
         log "ERROR: cannot open the autonomous lock $AUTONOMOUS_LOCKFILE; check AGENT_MSG_AUTONOMOUS_LOCKFILE"
         exit 1
     fi
-    if ! flock -n 8; then
+    LANE_RC=0
+    flock -n -E 75 8 || LANE_RC=$?
+    if [ "$LANE_RC" -eq 75 ]; then
         log "slot occupied: a scheduled autonomous run holds the single lane; the retry timer will re-check"
         exit 0
+    elif [ "$LANE_RC" -ne 0 ]; then
+        log "ERROR: flock on $AUTONOMOUS_LOCKFILE failed (exit $LANE_RC); not launching"
+        exit 1
     fi
     # A live PID without the flock is a runner from before the flock change.
     holder="$(cat "$AUTONOMOUS_LOCKFILE" 2>/dev/null || true)"
@@ -197,17 +202,18 @@ fi
 
 unset CLAUDECODE CLAUDE_CODE_ENTRYPOINT 2>/dev/null || true
 
-# 8>&- 9>&-: keep the lock fds out of the session, so a background process it
-# leaves behind cannot hold a lock and block every later pickup.
+# `timeout` keeps the lock fds, so killing this script does not free the slot
+# while the session runs; the shim closes them just before exec'ing claude, so
+# a background process the session leaves behind cannot hold a lock forever.
 
 EXIT_CODE=0
-timeout "$SCRIPT_TIMEOUT" "$CLAUDE_BIN" -p \
+timeout "$SCRIPT_TIMEOUT" bash -c 'exec 8>&- 9>&- "$@"' _ "$CLAUDE_BIN" -p \
     --dangerously-skip-permissions \
     --model "$MODEL" \
     --append-system-prompt-file "$SYSPROMPT_FILE" \
-    "$PROMPT" </dev/null 8>&- 9>&- || EXIT_CODE=$?
+    "$PROMPT" </dev/null || EXIT_CODE=$?
 
-# timeout exits 126/127 when it cannot run $CLAUDE_BIN at all (not executable /
+# The shim exits 126/127 when it cannot run $CLAUDE_BIN at all (not executable /
 # not found). No session ran, so those dispatches must not count toward the cap:
 # otherwise a broken install would mark every pending message STUCK.
 if [ "$EXIT_CODE" -eq 126 ] || [ "$EXIT_CODE" -eq 127 ]; then

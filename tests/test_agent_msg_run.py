@@ -396,3 +396,38 @@ def test_single_lane_unopenable_lock_is_an_error_not_a_busy_slot(
     assert "cannot open the autonomous lock" in r.stdout
     assert "slot occupied" not in r.stdout
     assert _launch_count(w) == 0
+
+
+def test_session_does_not_inherit_the_lock_fds(tmp_path: Path) -> None:
+    """A background process left by the session must not hold the slot."""
+    w = _workspace(tmp_path, [MSG])
+    w["env"]["AGENT_MSG_SINGLE_LANE"] = "1"
+    fds = tmp_path / "fds"
+    _exe(
+        Path(w["env"]["CLAUDE_BIN"]),
+        f'echo LAUNCH >> "{w["launches"]}"\nls /proc/$$/fd > "{fds}"\n',
+    )
+    assert _run(w).returncode == 0
+    assert _launch_count(w) == 1
+    open_fds = fds.read_text().split()
+    assert "8" not in open_fds and "9" not in open_fds, open_fds
+
+
+def test_single_lane_flock_error_is_not_a_busy_slot(tmp_path: Path) -> None:
+    w = _workspace(tmp_path, [MSG])
+    w["env"]["AGENT_MSG_SINGLE_LANE"] = "1"
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    real_flock = shutil.which("flock")
+    assert real_flock
+    # Real flock for the slot lock (fd 9); a failing one for the lane (fd 8).
+    _exe(
+        bindir / "flock",
+        f'case " $* " in *" 8 "*) exit 66;; esac\nexec "{real_flock}" "$@"\n',
+    )
+    w["env"]["PATH"] = f"{bindir}:{w['env']['PATH']}"
+    r = _run(w)
+    assert r.returncode == 1
+    assert "flock on" in r.stdout and "failed (exit 66)" in r.stdout
+    assert "slot occupied" not in r.stdout
+    assert _launch_count(w) == 0
