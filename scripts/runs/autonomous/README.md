@@ -78,10 +78,16 @@ context (scripts, CI), set `FORCE_SESSION=1`.
 ### Pre-run gates (optional, from gptme-contrib)
 
 Both runners check a **session gate** before starting a scheduled session. The
-Claude Code runner also checks a **quota gate**. Both live in `gptme-contrib`
-and **degrade gracefully** — if the contrib scripts aren't present (e.g. a fresh
-fork before `git submodule update`), the runner logs `not found` and runs anyway.
-The runner always functions; the gates only tighten it.
+Claude Code runner also checks a **quota gate**. Missing gate scripts are skipped,
+but that does **not** make the rest of `gptme-contrib` optional: context and the
+Claude Code system-prompt builder are symlinks into the submodule. In a manual
+clone, initialize it before testing either backend:
+
+```sh
+git submodule update --init --recursive
+```
+
+`gptme-agent create` initializes the submodule for template-based workspaces.
 
 - **Session gate** (`gptme-contrib/scripts/runs/autonomous/session-gate.py`): used
   by both `autonomous-run.sh` and `autonomous-run-cc.sh`. Skips when there's no
@@ -103,26 +109,46 @@ FORCE_SESSION=1 ./scripts/runs/autonomous/autonomous-run-cc.sh
 
 ### 4. Schedule with systemd (Linux)
 
-Create a systemd timer to run automatically:
+For the gptme backend, `gptme-agent install` generates service/timer files. It
+still requires the launcher configuration and manual test above. For a custom
+service or Claude Code, copy the shipped examples **from the workspace root**
+(do not install both alternatives under the same destination):
 
 ```bash
-# Copy the example service and timer for your backend
-# gptme backend:
-cp ../../systemd/user/agent-autonomous.service ~/.config/systemd/user/
-# Claude Code backend:
-cp ../../systemd/user/agent-autonomous-cc.service ~/.config/systemd/user/
+mkdir -p ~/.config/systemd/user
 
-cp ../../systemd/user/agent-autonomous.timer ~/.config/systemd/user/
+# Choose ONE backend. Both use the same destination service name so the
+# timer's default target is unambiguous.
+cp dotfiles/.config/systemd/user/agent-autonomous.service.example \
+  ~/.config/systemd/user/agent-autonomous.service
+# For Claude Code, use this instead of the preceding cp:
+# cp dotfiles/.config/systemd/user/agent-autonomous-cc.service.example \
+#   ~/.config/systemd/user/agent-autonomous.service
 
-# Edit to match your configuration
-# Update WorkingDirectory, ExecStart paths, and schedule
-# For CC backend: also update the PATH to include your node installation
-
-# Enable and start
-systemctl --user daemon-reload
-systemctl --user enable agent-autonomous.timer
-systemctl --user start agent-autonomous.timer
+cp dotfiles/.config/systemd/user/agent-autonomous.timer.example \
+  ~/.config/systemd/user/agent-autonomous.timer
 ```
+
+Before enabling, edit the copied files: replace all workspace paths, review
+`OnCalendar` and restart behavior, and include your Node installation in `PATH`
+for Claude Code. The timer example currently has `Requires=agent-autonomous.service`:
+remove that dependency if enabling the timer should wait until the calendar
+instead of immediately starting a service. Set `Unit=agent-autonomous.service`
+in its `[Timer]` section explicitly. Known scheduling-example defects are tracked
+in [gptme/gptme-agent-template#137](https://github.com/gptme/gptme-agent-template/issues/137).
+
+After reviewing those settings:
+
+```bash
+systemd-analyze --user verify ~/.config/systemd/user/agent-autonomous.service \
+  ~/.config/systemd/user/agent-autonomous.timer
+systemctl --user daemon-reload
+systemctl --user enable --now agent-autonomous.timer
+```
+
+This section covers Linux systemd only. The CLI also offers launchd installation,
+but the shell launchers contain GNU-tool/Bash-version assumptions; do not assume
+these manual instructions verify stock macOS compatibility.
 
 ## CASCADE Workflow
 
