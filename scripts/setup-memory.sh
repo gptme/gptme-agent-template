@@ -85,6 +85,35 @@ bridge_is_correct() {
     [ -L "$BRIDGE" ] && [ "$(readlink -f "$BRIDGE")" = "$(readlink -f "$REPO_MEMORY")" ]
 }
 
+# True if path $1 names a location inside this workspace, judged on the path
+# itself: a memory dir inside the workspace may be a symlink to another disk, so
+# where it finally resolves says nothing about who owns it.
+path_in_workspace() {
+    local p="$1" parent
+    case "/$p/" in
+        */../*|*/./*) ;;
+        *) case "$p" in "$WORKSPACE"/*|"$workspace_real"/*) return 0 ;; esac ;;
+    esac
+    parent="$(readlink -f "$(dirname "$p")" 2>/dev/null || true)"
+    [ -n "$parent" ] && case "$parent/" in "$workspace_real"/*) return 0 ;; esac
+    return 1
+}
+
+# True if any hop of the bridge's symlink chain lands inside this workspace —
+# e.g. a link to knowledge/claude-memory, itself a link to another disk.
+bridge_link_in_workspace() {
+    local p="$BRIDGE" t hops=0
+    while [ "$hops" -lt 40 ]; do
+        t="$(readlink "$p" 2>/dev/null)" || return 1
+        case "$t" in /*) ;; *) t="$(dirname "$p")/$t" ;; esac
+        path_in_workspace "$t" && return 0
+        [ -L "$t" ] || return 1
+        p="$t"
+        hops=$((hops + 1))
+    done
+    return 1
+}
+
 if [ "$CHECK_ONLY" -eq 1 ]; then
     if [ ! -d "$CLAUDE_HOME" ]; then
         echo "setup-memory: no $CLAUDE_HOME (pure-gptme host) — bridge not required"
@@ -123,7 +152,8 @@ if [ -L "$BRIDGE" ]; then
     current="$(readlink -f "$BRIDGE" || true)"
     workspace_real="$(readlink -f "$WORKSPACE")"
     if [ -n "$current" ] && [ -d "$current" ] \
-        && [ "${current#"$workspace_real"/}" = "$current" ]; then
+        && [ "${current#"$workspace_real"/}" = "$current" ] \
+        && ! bridge_link_in_workspace; then
         echo "setup-memory: ERROR '$BRIDGE' already links to '$current'," >&2
         echo "  a memory dir outside this workspace. Claude Code maps '$WORKSPACE'" >&2
         echo "  and that workspace to the same project dir, so they would share" >&2
@@ -143,9 +173,12 @@ elif [ -d "$BRIDGE" ]; then
         name="$(basename "$src")"
         # Copies parked by an earlier run stay here until the user resolves the
         # collision; migrating them would bury them in the repo.
+        # Only the exact names this script generates (NAME.bridge-backup and
+        # NAME.bridge-backup.N) — not user files like notes.bridge-backup.2026-11-24.md.
         case "$name" in
-            *.bridge-backup|*.bridge-backup.[0-9]*) continue ;;
+            *.bridge-backup) continue ;;
         esac
+        [[ "$name" =~ \.bridge-backup\.[0-9]+$ ]] && continue
         dest="$REPO_MEMORY/$name"
         if [ -e "$dest" ]; then
             echo "setup-memory: WARNING keeping repo copy of '$name' (bridge copy parked as .bridge-backup)" >&2

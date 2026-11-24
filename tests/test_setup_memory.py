@@ -10,8 +10,16 @@ from pathlib import Path
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "setup-memory.sh"
 
 
-def _run(workspace: Path, claude_home: Path) -> subprocess.CompletedProcess[str]:
-    env = {**os.environ, "WORKSPACE": str(workspace), "CLAUDE_HOME": str(claude_home)}
+def _run(
+    workspace: Path, claude_home: Path, memory_dir: str = "memory"
+) -> subprocess.CompletedProcess[str]:
+    # MEMORY_DIR is pinned so a caller's own MEMORY_DIR cannot leak into the tests.
+    env = {
+        **os.environ,
+        "WORKSPACE": str(workspace),
+        "CLAUDE_HOME": str(claude_home),
+        "MEMORY_DIR": memory_dir,
+    }
     return subprocess.run(
         ["bash", str(SCRIPT)],
         capture_output=True,
@@ -100,5 +108,43 @@ def test_dangling_link_is_repointed(tmp_path: Path) -> None:
     bridge.symlink_to(tmp_path / "gone" / "memory")
 
     result = _run(workspace, claude_home)
+    assert result.returncode == 0, result.stderr
+    assert bridge.resolve() == (workspace / "memory").resolve()
+
+
+def test_date_stamped_user_file_is_migrated(tmp_path: Path) -> None:
+    """Only the script's own NAME.bridge-backup[.N] names stay parked; a user
+    file that merely contains ".bridge-backup." is migrated like any other."""
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    claude_home = tmp_path / ".claude"
+    bridge = _bridge(workspace, claude_home)
+    bridge.mkdir(parents=True)
+    name = "notes.bridge-backup.2026-11-24.md"
+    (bridge / name).write_text("user notes\n")
+
+    result = _run(workspace, claude_home)
+    assert result.returncode == 0, result.stderr
+    assert (workspace / "memory" / name).read_text() == "user notes\n"
+    assert bridge.is_symlink()
+    assert bridge.resolve() == (workspace / "memory").resolve()
+
+
+def test_own_memory_link_to_other_disk_is_repointed(tmp_path: Path) -> None:
+    """The bridge points at a memory dir inside this workspace that is itself a
+    symlink to another disk. It resolves outside the workspace but is still
+    this workspace's link, so changing MEMORY_DIR repoints it instead of
+    reporting a sibling-workspace collision."""
+    claude_home = tmp_path / ".claude"
+    workspace = tmp_path / "ws"
+    other_disk = tmp_path / "other-disk" / "claude-memory"
+    other_disk.mkdir(parents=True)
+    (workspace / "knowledge").mkdir(parents=True)
+    (workspace / "knowledge" / "claude-memory").symlink_to(other_disk)
+    bridge = _bridge(workspace, claude_home)
+    bridge.parent.mkdir(parents=True)
+    bridge.symlink_to(workspace / "knowledge" / "claude-memory")
+
+    result = _run(workspace, claude_home, memory_dir="memory")
     assert result.returncode == 0, result.stderr
     assert bridge.resolve() == (workspace / "memory").resolve()

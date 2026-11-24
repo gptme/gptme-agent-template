@@ -47,6 +47,8 @@ def _fork_env(tmp_path: Path) -> dict[str, str]:
         "HOME": str(home),
         "GIT_CONFIG_GLOBAL": str(gitconfig),
         "GIT_CONFIG_NOSYSTEM": "1",
+        # Pin the default so a caller's own MEMORY_DIR cannot leak into the fork.
+        "MEMORY_DIR": "memory",
     }
     env.pop("CLAUDE_HOME", None)
     env.pop("WORKSPACE", None)
