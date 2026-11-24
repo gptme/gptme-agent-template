@@ -131,6 +131,10 @@ fi
 log "Pulling latest changes..."
 git pull --rebase --autostash 2>&1 || {
     log "WARN: git pull failed, continuing with local state"
+    # A conflicting rebase would leave the repo mid-rebase with conflict
+    # markers, so every later pull and commit fails. Abort it (this also
+    # restores the autostash) and keep the pre-pull state.
+    git rebase --abort 2>/dev/null || true
 }
 
 # --- Build system prompt ---

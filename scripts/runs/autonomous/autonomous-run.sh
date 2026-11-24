@@ -99,6 +99,9 @@ SCRIPT_DIR="$REPO_DIR/scripts"
 export PATH="$REPO_DIR/scripts:$PATH"
 if ! git pull; then
     log "WARNING: Git pull failed, continuing with current state"
+    # A conflicting pull (merge or pull.rebase) would leave unmerged files that
+    # break every later pull and commit. Abort it and keep the pre-pull state.
+    git rebase --abort 2>/dev/null || git merge --abort 2>/dev/null || true
 fi
 
 # Generate work queue from task files (if script exists)

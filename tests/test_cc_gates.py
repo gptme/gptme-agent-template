@@ -224,3 +224,48 @@ def test_refused_run_keeps_live_runs_lock(tmp_path: Path) -> None:
         holder.kill()
         holder.wait()
         lock.unlink(missing_ok=True)
+
+
+def test_pull_conflict_does_not_leave_repo_mid_rebase(tmp_path: Path) -> None:
+    """A conflicting `git pull --rebase` must not wedge the workspace: every
+    later run's pull and the session's commits would fail on unmerged files."""
+    _setup_workspace(tmp_path)
+    (tmp_path / "bin" / "git").unlink()  # this test needs real git
+    genv = {
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(tmp_path),
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+
+    def git(*args: str, cwd: Path = tmp_path) -> None:
+        subprocess.run(
+            ["git", *args], cwd=cwd, env=genv, check=True, capture_output=True
+        )
+
+    git("init", "-q", "-b", "master")
+    (tmp_path / "state.md").write_text("base\n")
+    git("add", "-A")
+    git("commit", "-qm", "init")
+    origin = tmp_path.parent / f"{tmp_path.name}-origin.git"
+    git("clone", "-q", "--bare", str(tmp_path), str(origin))
+    git("remote", "add", "origin", str(origin))
+    git("fetch", "-q", "origin")
+    git("branch", "-q", "--set-upstream-to=origin/master")
+    other = tmp_path.parent / f"{tmp_path.name}-other"
+    git("clone", "-q", str(origin), str(other), cwd=tmp_path.parent)
+    (other / "state.md").write_text("upstream edit\n")
+    git("commit", "-qam", "upstream", cwd=other)
+    git("push", "-q", "origin", "master", cwd=other)
+    (tmp_path / "state.md").write_text("local edit\n")
+    git("commit", "-qam", "local")
+
+    _run(tmp_path, {"FORCE_SESSION": "1"})
+
+    gitdir = tmp_path / ".git"
+    assert not (gitdir / "rebase-merge").exists(), "left mid-rebase"
+    assert not (gitdir / "rebase-apply").exists(), "left mid-rebase"
+    assert "<<<<<<<" not in (tmp_path / "state.md").read_text()

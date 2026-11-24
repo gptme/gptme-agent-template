@@ -314,3 +314,50 @@ def test_terminated_runner_stops_gptme(tmp_path: Path) -> None:
                 os.kill(gptme_pid, 9)
             except ProcessLookupError:
                 pass
+
+
+def test_pull_conflict_does_not_leave_unmerged_files(tmp_path: Path) -> None:
+    """With pull configured to merge, a conflicting `git pull` must not leave
+    unmerged files behind for every later pull and commit to trip on."""
+    _setup_workspace(tmp_path)
+    (tmp_path / "bin" / "git").unlink()  # this test needs real git
+    genv = {
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(tmp_path),
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+
+    def git(*args: str, cwd: Path = tmp_path) -> None:
+        subprocess.run(
+            ["git", *args], cwd=cwd, env=genv, check=True, capture_output=True
+        )
+
+    git("init", "-q", "-b", "master")
+    git("config", "pull.rebase", "false")
+    (tmp_path / "state.md").write_text("base\n")
+    git("add", "-A")
+    git("commit", "-qm", "init")
+    origin = tmp_path.parent / f"{tmp_path.name}-origin.git"
+    git("clone", "-q", "--bare", str(tmp_path), str(origin))
+    git("remote", "add", "origin", str(origin))
+    git("fetch", "-q", "origin")
+    git("branch", "-q", "--set-upstream-to=origin/master")
+    other = tmp_path.parent / f"{tmp_path.name}-other"
+    git("clone", "-q", str(origin), str(other), cwd=tmp_path.parent)
+    (other / "state.md").write_text("upstream edit\n")
+    git("commit", "-qam", "upstream", cwd=other)
+    git("push", "-q", "origin", "master", cwd=other)
+    (tmp_path / "state.md").write_text("local edit\n")
+    git("commit", "-qam", "local")
+
+    _run(
+        tmp_path,
+        {**genv, "PATH": f"{tmp_path}/bin:/usr/bin:/bin", "FORCE_SESSION": "1"},
+    )
+
+    assert not (tmp_path / ".git" / "MERGE_HEAD").exists(), "left mid-merge"
+    assert "<<<<<<<" not in (tmp_path / "state.md").read_text()
