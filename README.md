@@ -216,6 +216,25 @@ claude
 ```
 
 The `scripts/build-system-prompt.sh` script reads `gptme.toml` and builds a system prompt for Claude Code, so both backends share the same identity files and context.
+
+#### Claude Code lesson-hook dependencies
+
+The shipped `.claude/settings.json` runs the lesson hook with the workspace's
+`.venv/bin/python3` when it exists, and falls back to `python3` on `PATH`
+otherwise (a fresh fork set up with `install-deps.sh` and `pipx` has no
+`.venv`). The matcher needs `gptme-rag` importable in whichever interpreter
+runs; installing it only through `pipx` does not satisfy a workspace `.venv`:
+
+```sh
+git submodule update --init --recursive
+uv venv .venv
+uv pip install --python .venv/bin/python3 ./gptme-contrib/packages/gptme-rag
+```
+
+When the matcher import fails, ordinary hook calls stay fail-open. Once the
+contrib submodule includes the diagnostics from
+[gptme/gptme-contrib#2169](https://github.com/gptme/gptme-contrib/issues/2169),
+they record `dependency_missing` instead of `no_match`.
 <!--/template-->
 
 <!--template-->
