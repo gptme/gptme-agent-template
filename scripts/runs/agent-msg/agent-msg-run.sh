@@ -96,9 +96,13 @@ if ! "$WORKSPACE/scripts/build-system-prompt.sh" >"$SYSPROMPT_FILE"; then
     exit 1
 fi
 
+# PREV remembers each pre-launch count so a launch that never started a
+# session (see below) can put the counters back.
+declare -A PREV=()
 for p in "${DISPATCH[@]}"; do
     n=0
     [ -f "$STATE_DIR/attempts/$p" ] && n="$(cat "$STATE_DIR/attempts/$p")"
+    PREV["$p"]="$n"
     echo $((n + 1)) >"$STATE_DIR/attempts/$p"
 done
 
@@ -136,6 +140,20 @@ timeout "$SCRIPT_TIMEOUT" "$CLAUDE_BIN" -p \
     --append-system-prompt-file "$SYSPROMPT_FILE" \
     "$PROMPT" </dev/null || EXIT_CODE=$?
 
+# timeout exits 126/127 when it cannot run $CLAUDE_BIN at all (not executable /
+# not found). No session ran, so those dispatches must not count toward the cap:
+# otherwise a broken install would mark every pending message STUCK.
+if [ "$EXIT_CODE" -eq 126 ] || [ "$EXIT_CODE" -eq 127 ]; then
+    for p in "${DISPATCH[@]}"; do
+        if [ "${PREV[$p]}" -eq 0 ]; then
+            rm -f "$STATE_DIR/attempts/$p"
+        else
+            echo "${PREV[$p]}" >"$STATE_DIR/attempts/$p"
+        fi
+    done
+    log "ERROR: could not start '$CLAUDE_BIN' (exit: $EXIT_CODE); no session ran and attempt counters restored"
+    exit "$EXIT_CODE"
+fi
 if [ "$EXIT_CODE" -eq 124 ]; then
     log "session timed out after ${SCRIPT_TIMEOUT}s"
 fi

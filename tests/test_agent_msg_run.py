@@ -8,7 +8,10 @@ from __future__ import annotations
 import os
 import shutil
 import stat
+import re
 import subprocess
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPT = (
@@ -81,26 +84,38 @@ def test_nothing_pending_starts_no_session(tmp_path: Path) -> None:
 
 def test_pending_message_launches_one_session_with_timestamps(tmp_path: Path) -> None:
     w = _workspace(tmp_path, [MSG])
+    before = int(time.time())
     r = _run(w)
+    after = int(time.time())
     assert r.returncode == 0, r.stderr
     assert _launch_count(w) == 1
     assert f"dispatch: msg={MSG} msg_ts=20261117-120000" in r.stdout
-    assert "pickup_s=" in r.stdout
+    # pickup_s is launch time minus the send time in the file name, so an
+    # inverted subtraction or a mis-parsed timestamp fails here.
+    m = re.search(r"pickup_s=(-?\d+)", r.stdout)
+    assert m, r.stdout
+    sent = int(datetime(2026, 11, 17, 12, 0, 0, tzinfo=timezone.utc).timestamp())
+    assert before - sent <= int(m.group(1)) <= after - sent
     assert MSG in Path(f"{w['launches']}.args").read_text()
 
 
 def test_busy_slot_exits_zero_without_launch(tmp_path: Path) -> None:
     w = _workspace(tmp_path, [MSG])
+    ready = tmp_path / "holder.ready"
     holder = subprocess.Popen(
-        ["bash", "-c", f'exec 9>"{tmp_path / "slot.lock"}"; flock -n 9; sleep 20'],
+        [
+            "bash",
+            "-c",
+            f'exec 9>"{tmp_path / "slot.lock"}"; flock -n 9 && touch "{ready}"; sleep 20',
+        ],
     )
     try:
-        # Let the holder take the lock first.
-        for _ in range(50):
-            if (tmp_path / "slot.lock").exists():
+        # The marker is written only after flock succeeds, so the lock is held.
+        for _ in range(100):
+            if ready.exists():
                 break
-            subprocess.run(["sleep", "0.1"])
-        subprocess.run(["sleep", "0.3"])
+            time.sleep(0.1)
+        assert ready.exists(), "holder never acquired the slot lock"
         r = _run(w)
     finally:
         holder.kill()
@@ -159,3 +174,24 @@ def test_attempt_counter_dropped_when_pending_list_is_empty(tmp_path: Path) -> N
     r = _run(w)
     assert "nothing pending" in r.stdout
     assert not counter.exists()
+
+
+def test_claude_that_cannot_start_leaves_attempts_unchanged(tmp_path: Path) -> None:
+    w = _workspace(tmp_path, [MSG])
+    w["env"]["CLAUDE_BIN"] = str(tmp_path / "no-such-claude")
+    for _ in range(4):
+        r = _run(w)
+        assert r.returncode == 127
+        assert "attempt counters restored" in r.stdout
+        assert "STUCK" not in r.stdout
+    assert not (tmp_path / "state" / "attempts" / MSG).exists()
+
+
+def test_claude_that_cannot_start_restores_an_existing_count(tmp_path: Path) -> None:
+    w = _workspace(tmp_path, [MSG])
+    _run(w)  # one real dispatch
+    counter = tmp_path / "state" / "attempts" / MSG
+    assert counter.read_text().strip() == "1"
+    w["env"]["CLAUDE_BIN"] = str(tmp_path / "no-such-claude")
+    assert _run(w).returncode == 127
+    assert counter.read_text().strip() == "1"

@@ -47,6 +47,8 @@ it logs `nothing pending` and exits without starting a model session.
 - **Retry cap.** A message is dispatched at most `AGENT_MSG_MAX_ATTEMPTS` (default 3)
   times; after that the script logs `STUCK:` and skips it. Counters live in
   `state/agent-msg/attempts/` and are dropped once the message leaves `pending`.
+  A run that never starts a session (prompt build fails, or `claude` cannot be
+  executed: exit 126/127) does not count toward the cap.
   Without the cap, a handler that decides "no reply needed" and never runs `ack`
   is relaunched at every retry. Handlers must end in `reply` or `ack` (`TOOLS.md`).
 - **Shared no-reply policy.** Feeds that never owe a reply belong in
