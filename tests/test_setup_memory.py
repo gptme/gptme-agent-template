@@ -98,6 +98,35 @@ def test_sibling_workspace_link_is_not_stolen(tmp_path: Path) -> None:
     assert bridge.resolve() == (first / "memory").resolve()
 
 
+def test_sibling_link_routed_through_this_workspace_is_not_stolen(
+    tmp_path: Path,
+) -> None:
+    """A sibling's live link may route through a path inside this workspace and
+    on to another disk. Only the link's first target decides ownership, so the
+    later in-workspace hop must not be mistaken for this workspace's own link."""
+    claude_home = tmp_path / ".claude"
+    claude_home.mkdir()
+    first = tmp_path / "my-agent"
+    second = tmp_path / "my_agent"
+    other_disk = tmp_path / "other-disk" / "claude-memory"
+    other_disk.mkdir(parents=True)
+    (first / "knowledge").mkdir(parents=True)
+    (second / "knowledge").mkdir(parents=True)
+    (second / "knowledge" / "claude-memory").symlink_to(other_disk)
+    (first / "knowledge" / "claude-memory").symlink_to(
+        second / "knowledge" / "claude-memory"
+    )
+    bridge = _bridge(first, claude_home)
+    bridge.parent.mkdir(parents=True)
+    bridge.symlink_to(first / "knowledge" / "claude-memory")
+
+    result = _run(second, claude_home)
+
+    assert result.returncode == 1, result.stdout
+    assert str(other_disk) in result.stderr, result.stderr
+    assert bridge.resolve() == other_disk.resolve()
+
+
 def test_dangling_link_is_repointed(tmp_path: Path) -> None:
     """A link left behind by a moved/deleted workspace is safe to repoint."""
     claude_home = tmp_path / ".claude"

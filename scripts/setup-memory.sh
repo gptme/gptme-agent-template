@@ -99,19 +99,16 @@ path_in_workspace() {
     return 1
 }
 
-# True if any hop of the bridge's symlink chain lands inside this workspace —
+# True if the bridge's FIRST target names a location inside this workspace —
 # e.g. a link to knowledge/claude-memory, itself a link to another disk.
-bridge_link_in_workspace() {
-    local p="$BRIDGE" t hops=0
-    while [ "$hops" -lt 40 ]; do
-        t="$(readlink "$p" 2>/dev/null)" || return 1
-        case "$t" in /*) ;; *) t="$(dirname "$p")/$t" ;; esac
-        path_in_workspace "$t" && return 0
-        [ -L "$t" ] || return 1
-        p="$t"
-        hops=$((hops + 1))
-    done
-    return 1
+# Only the first hop counts. A sibling workspace may route its own link through
+# a path inside this workspace and on to another disk; treating any later hop as
+# ownership would repoint (and so steal) that sibling's live link.
+bridge_first_target_in_workspace() {
+    local t
+    t="$(readlink "$BRIDGE" 2>/dev/null)" || return 1
+    case "$t" in /*) ;; *) t="$(dirname "$BRIDGE")/$t" ;; esac
+    path_in_workspace "$t"
 }
 
 if [ "$CHECK_ONLY" -eq 1 ]; then
@@ -153,7 +150,7 @@ if [ -L "$BRIDGE" ]; then
     workspace_real="$(readlink -f "$WORKSPACE")"
     if [ -n "$current" ] && [ -d "$current" ] \
         && [ "${current#"$workspace_real"/}" = "$current" ] \
-        && ! bridge_link_in_workspace; then
+        && ! bridge_first_target_in_workspace; then
         echo "setup-memory: ERROR '$BRIDGE' already links to '$current'," >&2
         echo "  a memory dir outside this workspace. Claude Code maps '$WORKSPACE'" >&2
         echo "  and that workspace to the same project dir, so they would share" >&2
