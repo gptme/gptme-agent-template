@@ -264,7 +264,38 @@ gptme "hello"
 
 Agents can run autonomously on a schedule using systemd (Linux) or launchd (macOS).
 
+**Configure before installing or running services.** Creating a workspace customizes
+its identity files, but leaves the launchers' configuration placeholders intact.
+<!--template-->`gptme-agent doctor` checks that the launcher exists and is executable; a passing
+report does not mean its paths or model are configured.<!--/template-->
+
+- **gptme**: edit `scripts/runs/autonomous/autonomous-run.sh`, setting
+  `AGENT_NAME` and `WORKSPACE` to your agent name and absolute workspace path.
+  Review the prompt, timeout and optional GitHub settings. The default
+  `/path/to/your/workspace` exits at `cd` without starting a model.
+- **Claude Code**: edit `scripts/runs/autonomous/autonomous-run-cc.sh`, setting
+  `AGENT_NAME` and `MODEL`; its workspace path is detected automatically.
+  <!--template-->`gptme-agent install` schedules the **gptme** launcher, not this alternative.<!--/template-->
+  Use the backend-specific scheduling instructions in
+  [`scripts/runs/autonomous/README.md`](./scripts/runs/autonomous/README.md) for Claude Code.
+
+After configuring inference, test your chosen launcher directly from the workspace:
+
+```sh
+FORCE_SESSION=1 ./scripts/runs/autonomous/autonomous-run.sh
+# Or, after configuring Claude Code:
+FORCE_SESSION=1 ./scripts/runs/autonomous/autonomous-run-cc.sh
+```
+
+These are real autonomous runs with tool access, not dry runs. Check the prompt
+and repository access first. `FORCE_SESSION=1` skips the session gate for both
+launchers, so a quiet gate can't silently skip your manual test. For Claude Code,
+it also skips the quota gate, so check your remaining subscription quota first.
+
 <!--template-->
+Once the manual test works, schedule the **gptme** launcher as a service
+(gptme backend only):
+
 ```sh
 # Install as a system service (runs every 30 minutes by default)
 gptme-agent install
@@ -281,10 +312,6 @@ gptme-agent stop                # Pause scheduled runs
 <!--/template-->
 
 See the [gptme agents documentation](https://gptme.org/docs/agents.html) for service installation and management commands.
-
-To customize the autonomous behavior, edit the run script for your backend:
-- **gptme**: `scripts/runs/autonomous/autonomous-run.sh`
-- **Claude Code**: `scripts/runs/autonomous/autonomous-run-cc.sh`
 
 **See**: [`scripts/runs/autonomous/README.md`](./scripts/runs/autonomous/README.md) for complete documentation.
 

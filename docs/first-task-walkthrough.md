@@ -54,11 +54,19 @@ The implementation is deliberately wrong. The tests are the spec.
 
 ## 2. Confirm it fails
 
-Needs `pytest` (`pipx install pytest` or `uvx pytest` if you don't have it).
+Install `pytest` into the same Python environment used by the commands and agent:
 
 ```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python3 -m pip install pytest
 python3 -m pytest -q --tb=short
 ```
+
+Keep this environment activated through the agent run below. `pipx install pytest`
+installs an isolated CLI; it does not make `python3 -m pytest` work in your current
+Python environment. Alternatively, use `uvx pytest` consistently in both your own
+commands and the agent prompt.
 
 Dry-run output, 2026-10-07, fresh directory:
 
@@ -106,7 +114,7 @@ Flags that matter:
 | Flag | Why |
 |------|-----|
 | `-n` / `--non-interactive` | One-shot run; implies `--no-confirm` |
-| `--no-workspace` | Skip loading the agent brain. This exercise is two files, not a harness change |
+| `--no-workspace` | Skip workspace prompt files and `context_cmd`; tool and agent configuration are still loaded. This exercise does not need the brain's prompt context |
 | `-t shell,read,save,patch` | The tools this task actually needs |
 
 Add `-m <provider/model>` to pin a model; omit it to use your default. The
