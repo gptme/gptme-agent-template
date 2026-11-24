@@ -20,7 +20,7 @@ def _git(*args: str, cwd: Path, env: dict[str, str]) -> str:
     ).stdout
 
 
-def test_relative_target_wires_memory_bridge(tmp_path: Path) -> None:
+def _fork_env(tmp_path: Path) -> dict[str, str]:
     home = tmp_path / "home"
     (home / ".claude").mkdir(parents=True)
     stub = tmp_path / "contrib-stub"
@@ -44,11 +44,16 @@ def test_relative_target_wires_memory_bridge(tmp_path: Path) -> None:
     (stub / "README.md").write_text("stub\n")
     _git("add", ".", cwd=stub, env=env)
     _git("commit", "-qm", "stub", cwd=stub, env=env)
+    return env
 
+
+def _fork(
+    tmp_path: Path, env: dict[str, str], target: str, name: str
+) -> subprocess.CompletedProcess[str]:
     work = tmp_path / "work"
-    work.mkdir()
-    result = subprocess.run(
-        ["bash", str(FORK), "./rover", "Rover"],
+    work.mkdir(exist_ok=True)
+    return subprocess.run(
+        ["bash", str(FORK), target, name],
         cwd=work,
         env=env,
         capture_output=True,
@@ -56,7 +61,13 @@ def test_relative_target_wires_memory_bridge(tmp_path: Path) -> None:
         timeout=300,
         check=False,
     )
-    target = work / "rover"
+
+
+def test_relative_target_wires_memory_bridge(tmp_path: Path) -> None:
+    env = _fork_env(tmp_path)
+    home = Path(env["HOME"])
+    result = _fork(tmp_path, env, "./rover", "Rover")
+    target = tmp_path / "work" / "rover"
     tracked = _git("ls-files", cwd=target, env=env).split()
     assert "rover/memory/MEMORY.md" not in tracked, result.stdout + result.stderr
 
@@ -71,3 +82,14 @@ def test_relative_target_wires_memory_bridge(tmp_path: Path) -> None:
         p.name for p in (home / ".claude" / "projects").iterdir()
     )
     assert bridge.resolve() == (target / "memory").resolve()
+
+
+def test_agent_name_with_perl_metacharacters_is_literal(tmp_path: Path) -> None:
+    """The agent name was spliced into a perl s/// replacement: "/" aborted the
+    fork and "@x" interpolated as an empty array, truncating the name."""
+    env = _fork_env(tmp_path)
+    name = "R2@D2/x$y"
+    result = _fork(tmp_path, env, str(tmp_path / "work" / "droid"), name)
+    assert result.returncode == 0, result.stdout + result.stderr
+    toml = (tmp_path / "work" / "droid" / "gptme.toml").read_text()
+    assert f'"{name}"' in toml, toml[:400]

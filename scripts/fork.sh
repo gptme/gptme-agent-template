@@ -197,8 +197,10 @@ function copy_file() {
         # (e.g. CLI tool references like "gptme-agent create" that should not be renamed)
         perl -i -pe 'BEGIN{undef $/;} s/<!--template-->.*?<!--\/template-->\n?//gs' "$file"
         # Replace template strings in remaining content
-        perl -i -pe "s/${NAME_TEMPLATE}-template/${NEW_AGENT}/g" "$file"
-        perl -i -pe "s/${NAME_TEMPLATE}/${NEW_AGENT}/g" "$file"
+        # Names go through the environment, not the perl source: spliced in,
+        # "/" ended the s/// early and "@x"/"$x" interpolated as variables.
+        NAME_TEMPLATE="$NAME_TEMPLATE" NEW_AGENT="$NEW_AGENT" \
+            perl -i -pe 's/\Q$ENV{NAME_TEMPLATE}\E-template/$ENV{NEW_AGENT}/g; s/\Q$ENV{NAME_TEMPLATE}\E/$ENV{NEW_AGENT}/g' "$file"
         # Collapse 3+ consecutive blank lines to 2 (cleanup after template stripping)
         perl -i -pe 'BEGIN{undef $/;} s/\n{4,}/\n\n\n/gs' "$file"
     done
