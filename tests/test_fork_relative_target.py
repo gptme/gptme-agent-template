@@ -11,6 +11,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+
 FORK = Path(__file__).resolve().parents[1] / "scripts" / "fork.sh"
 
 
@@ -32,8 +34,16 @@ def _fork_env(tmp_path: Path) -> dict[str, str]:
         f'[url "{stub}"]\n  insteadOf = https://github.com/gptme/gptme-contrib.git\n'
         "[init]\n  defaultBranch = master\n"
     )
+    # fork.sh runs prek/pre-commit when on PATH, and real hooks can fetch
+    # repos; shadow both with no-op stubs so the fork stays offline.
+    stub_bin = tmp_path / "stub-bin"
+    stub_bin.mkdir()
+    for tool in ("prek", "pre-commit"):
+        (stub_bin / tool).write_text("#!/bin/sh\nexit 0\n")
+        (stub_bin / tool).chmod(0o755)
     env = {
         **os.environ,
+        "PATH": f"{stub_bin}{os.pathsep}{os.environ.get('PATH', '')}",
         "HOME": str(home),
         "GIT_CONFIG_GLOBAL": str(gitconfig),
         "GIT_CONFIG_NOSYSTEM": "1",
@@ -67,8 +77,13 @@ def test_relative_target_wires_memory_bridge(tmp_path: Path) -> None:
     env = _fork_env(tmp_path)
     home = Path(env["HOME"])
     result = _fork(tmp_path, env, "./rover", "Rover")
+    assert result.returncode == 0, result.stdout + result.stderr
     target = tmp_path / "work" / "rover"
-    tracked = _git("ls-files", cwd=target, env=env).split()
+    # Inspect the commit, not the index: a failed commit leaves files staged.
+    tracked = _git(
+        "ls-tree", "-r", "--name-only", "HEAD", cwd=target, env=env
+    ).splitlines()
+    assert "memory/MEMORY.md" in tracked, result.stdout + result.stderr
     assert "rover/memory/MEMORY.md" not in tracked, result.stdout + result.stderr
 
     bridge = (
@@ -93,3 +108,20 @@ def test_agent_name_with_perl_metacharacters_is_literal(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     toml = (tmp_path / "work" / "droid" / "gptme.toml").read_text()
     assert f'"{name}"' in toml, toml[:400]
+    try:
+        import tomllib
+    except ModuleNotFoundError:  # Python < 3.11
+        return
+    assert tomllib.loads(toml)["agent"]["name"] == name
+
+
+@pytest.mark.parametrize("name", ["back\\slash", 'dq"uote', "tab\tname"])
+def test_agent_name_that_breaks_toml_is_rejected(tmp_path: Path, name: str) -> None:
+    """The name is copied verbatim into a quoted TOML string; a backslash or
+    quote would yield a config gptme can't read (or reads as another name)."""
+    env = _fork_env(tmp_path)
+    target = tmp_path / "work" / "bad"
+    result = _fork(tmp_path, env, str(target), name)
+    assert result.returncode != 0
+    assert "invalid agent name" in result.stderr, result.stdout + result.stderr
+    assert not target.exists()

@@ -43,16 +43,14 @@ def test_rerun_does_not_overwrite_parked_backup(tmp_path: Path) -> None:
 
     # Claude Code keeps writing into the still-real dir.
     (bridge / "MEMORY.md").write_text("SECOND bridge index\n")
-    _run(workspace, claude_home)
+    second = _run(workspace, claude_home)
+    assert second.returncode == 1
 
-    contents = [
-        p.read_text()
-        for root in (bridge, workspace / "memory")
-        if root.is_dir() and not root.is_symlink()
-        for p in root.iterdir()
-    ]
-    assert any("FIRST" in c for c in contents), contents
-    assert any("SECOND" in c for c in contents), contents
+    # Both parked copies stay in the bridge dir until the user resolves them;
+    # neither is migrated into the repo.
+    assert (bridge / "MEMORY.md.bridge-backup").read_text() == "FIRST bridge index\n"
+    assert (bridge / "MEMORY.md.bridge-backup.1").read_text() == "SECOND bridge index\n"
+    assert sorted(p.name for p in (workspace / "memory").iterdir()) == ["MEMORY.md"]
 
 
 def test_bridge_dir_matches_claude_code_mangling_for_underscores(
@@ -71,3 +69,36 @@ def test_bridge_dir_matches_claude_code_mangling_for_underscores(
     assert expected.is_symlink(), sorted(
         p.name for p in (claude_home / "projects").iterdir()
     )
+
+
+def test_sibling_workspace_link_is_not_stolen(tmp_path: Path) -> None:
+    """my-agent and my_agent mangle to the same project dir. Setting up the
+    second must keep the first's live link rather than repoint it."""
+    claude_home = tmp_path / ".claude"
+    claude_home.mkdir()
+    first = tmp_path / "my-agent"
+    second = tmp_path / "my_agent"
+    first.mkdir()
+    second.mkdir()
+    assert _bridge(first, claude_home) == _bridge(second, claude_home)
+    assert _run(first, claude_home).returncode == 0
+
+    result = _run(second, claude_home)
+    assert result.returncode == 1
+    assert str(first / "memory") in result.stderr, result.stderr
+    bridge = _bridge(first, claude_home)
+    assert bridge.resolve() == (first / "memory").resolve()
+
+
+def test_dangling_link_is_repointed(tmp_path: Path) -> None:
+    """A link left behind by a moved/deleted workspace is safe to repoint."""
+    claude_home = tmp_path / ".claude"
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    bridge = _bridge(workspace, claude_home)
+    bridge.parent.mkdir(parents=True)
+    bridge.symlink_to(tmp_path / "gone" / "memory")
+
+    result = _run(workspace, claude_home)
+    assert result.returncode == 0, result.stderr
+    assert bridge.resolve() == (workspace / "memory").resolve()

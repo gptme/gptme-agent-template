@@ -22,7 +22,9 @@
 # Behaviour:
 #   - No ~/.claude on this host (pure-gptme, no Claude Code) -> graceful no-op.
 #   - Bridge already a correct symlink                       -> no-op, report OK.
-#   - Bridge a symlink pointing elsewhere                    -> repoint.
+#   - Bridge a symlink pointing elsewhere                    -> repoint, unless it
+#                                                               is a live sibling
+#                                                               workspace's link.
 #   - Bridge a real EMPTY dir (the silent-fail case)         -> replace with symlink.
 #   - Bridge a real NON-EMPTY dir (CC wrote memories there)  -> migrate new files
 #                                                               into the repo, then
@@ -114,7 +116,23 @@ fi
 mkdir -p "$(dirname "$BRIDGE")"
 
 if [ -L "$BRIDGE" ]; then
-    # Wrong-target symlink: repoint.
+    # Wrong-target symlink. Claude Code's mangling is lossy: sibling workspaces
+    # such as my-agent and my_agent share one project dir. If the link still
+    # points at a live memory dir OUTSIDE this workspace, it belongs to such a
+    # sibling — repointing would route that workspace's memories into this repo.
+    current="$(readlink -f "$BRIDGE" || true)"
+    workspace_real="$(readlink -f "$WORKSPACE")"
+    if [ -n "$current" ] && [ -d "$current" ] \
+        && [ "${current#"$workspace_real"/}" = "$current" ]; then
+        echo "setup-memory: ERROR '$BRIDGE' already links to '$current'," >&2
+        echo "  a memory dir outside this workspace. Claude Code maps '$WORKSPACE'" >&2
+        echo "  and that workspace to the same project dir, so they would share" >&2
+        echo "  memory. Keeping the existing link; rename one workspace, or remove" >&2
+        echo "  the link yourself to repoint it here." >&2
+        exit 1
+    fi
+    # Dangling (workspace moved) or pointing elsewhere in this workspace
+    # (MEMORY_DIR changed): repoint.
     rm "$BRIDGE"
 elif [ -d "$BRIDGE" ]; then
     # Real directory — the silent-fail case. Migrate any files CC wrote here into
@@ -123,6 +141,11 @@ elif [ -d "$BRIDGE" ]; then
     shopt -s dotglob nullglob
     for src in "$BRIDGE"/*; do
         name="$(basename "$src")"
+        # Copies parked by an earlier run stay here until the user resolves the
+        # collision; migrating them would bury them in the repo.
+        case "$name" in
+            *.bridge-backup|*.bridge-backup.[0-9]*) continue ;;
+        esac
         dest="$REPO_MEMORY/$name"
         if [ -e "$dest" ]; then
             echo "setup-memory: WARNING keeping repo copy of '$name' (bridge copy parked as .bridge-backup)" >&2

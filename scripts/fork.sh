@@ -147,6 +147,13 @@ mkdir -p "$(dirname "$TARGET_DIR")"
 # If a name is provided, use it
 # Else, extract agent name from the last directory component, whether it has -agent suffix or not
 NEW_AGENT="${2:-$(basename "$TARGET_DIR" | sed 's/-agent$//')}"
+# The name lands verbatim inside a quoted TOML string (gptme.toml `name = "..."`)
+# and in Markdown, so no escaping is right for both: reject the characters TOML
+# would treat as an escape, a string end, or an invalid control character.
+if [[ -z "$NEW_AGENT" ]] || [[ "$NEW_AGENT" == *[\\\"[:cntrl:]]* ]]; then
+    echo "Error: invalid agent name '$NEW_AGENT': must be non-empty and must not contain a backslash, a double quote, or control characters" >&2
+    exit 1
+fi
 # Name of agent in template, to be replaced
 NAME_TEMPLATE="gptme-agent"
 
