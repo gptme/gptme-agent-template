@@ -22,7 +22,9 @@
 # Behaviour:
 #   - No ~/.claude on this host (pure-gptme, no Claude Code) -> graceful no-op.
 #   - Bridge already a correct symlink                       -> no-op, report OK.
-#   - Bridge a symlink pointing elsewhere                    -> repoint.
+#   - Bridge a symlink pointing elsewhere                    -> repoint, unless it
+#                                                               is a live sibling
+#                                                               workspace's link.
 #   - Bridge a real EMPTY dir (the silent-fail case)         -> replace with symlink.
 #   - Bridge a real NON-EMPTY dir (CC wrote memories there)  -> migrate new files
 #                                                               into the repo, then
@@ -48,9 +50,10 @@ usage() {
 }
 
 # Claude Code mangles the absolute workspace path into its project dir name by
-# replacing '/' and '.' with '-'. e.g. /home/agent/workspace -> -home-agent-workspace
+# replacing every non-alphanumeric character ('/', '.', '_', ...) with '-'.
+# e.g. /home/agent/my_workspace -> -home-agent-my-workspace
 mangle_path() {
-    printf '%s' "$1" | sed 's#[/.]#-#g'
+    printf '%s' "$1" | sed 's#[^A-Za-z0-9]#-#g'
 }
 
 CHECK_ONLY=0
@@ -80,6 +83,32 @@ STUB
 
 bridge_is_correct() {
     [ -L "$BRIDGE" ] && [ "$(readlink -f "$BRIDGE")" = "$(readlink -f "$REPO_MEMORY")" ]
+}
+
+# True if path $1 names a location inside this workspace, judged on the path
+# itself: a memory dir inside the workspace may be a symlink to another disk, so
+# where it finally resolves says nothing about who owns it.
+path_in_workspace() {
+    local p="$1" parent
+    case "/$p/" in
+        */../*|*/./*) ;;
+        *) case "$p" in "$WORKSPACE"/*|"$workspace_real"/*) return 0 ;; esac ;;
+    esac
+    parent="$(readlink -f "$(dirname "$p")" 2>/dev/null || true)"
+    [ -n "$parent" ] && case "$parent/" in "$workspace_real"/*) return 0 ;; esac
+    return 1
+}
+
+# True if the bridge's FIRST target names a location inside this workspace —
+# e.g. a link to knowledge/claude-memory, itself a link to another disk.
+# Only the first hop counts. A sibling workspace may route its own link through
+# a path inside this workspace and on to another disk; treating any later hop as
+# ownership would repoint (and so steal) that sibling's live link.
+bridge_first_target_in_workspace() {
+    local t
+    t="$(readlink "$BRIDGE" 2>/dev/null)" || return 1
+    case "$t" in /*) ;; *) t="$(dirname "$BRIDGE")/$t" ;; esac
+    path_in_workspace "$t"
 }
 
 if [ "$CHECK_ONLY" -eq 1 ]; then
@@ -113,7 +142,24 @@ fi
 mkdir -p "$(dirname "$BRIDGE")"
 
 if [ -L "$BRIDGE" ]; then
-    # Wrong-target symlink: repoint.
+    # Wrong-target symlink. Claude Code's mangling is lossy: sibling workspaces
+    # such as my-agent and my_agent share one project dir. If the link still
+    # points at a live memory dir OUTSIDE this workspace, it belongs to such a
+    # sibling — repointing would route that workspace's memories into this repo.
+    current="$(readlink -f "$BRIDGE" || true)"
+    workspace_real="$(readlink -f "$WORKSPACE")"
+    if [ -n "$current" ] && [ -d "$current" ] \
+        && [ "${current#"$workspace_real"/}" = "$current" ] \
+        && ! bridge_first_target_in_workspace; then
+        echo "setup-memory: ERROR '$BRIDGE' already links to '$current'," >&2
+        echo "  a memory dir outside this workspace. Claude Code maps '$WORKSPACE'" >&2
+        echo "  and that workspace to the same project dir, so they would share" >&2
+        echo "  memory. Keeping the existing link; rename one workspace, or remove" >&2
+        echo "  the link yourself to repoint it here." >&2
+        exit 1
+    fi
+    # Dangling (workspace moved) or pointing elsewhere in this workspace
+    # (MEMORY_DIR changed): repoint.
     rm "$BRIDGE"
 elif [ -d "$BRIDGE" ]; then
     # Real directory — the silent-fail case. Migrate any files CC wrote here into
@@ -122,10 +168,25 @@ elif [ -d "$BRIDGE" ]; then
     shopt -s dotglob nullglob
     for src in "$BRIDGE"/*; do
         name="$(basename "$src")"
+        # Copies parked by an earlier run stay here until the user resolves the
+        # collision; migrating them would bury them in the repo.
+        # Only the exact names this script generates (NAME.bridge-backup and
+        # NAME.bridge-backup.N) — not user files like notes.bridge-backup.2026-11-24.md.
+        case "$name" in
+            *.bridge-backup) continue ;;
+        esac
+        [[ "$name" =~ \.bridge-backup\.[0-9]+$ ]] && continue
         dest="$REPO_MEMORY/$name"
         if [ -e "$dest" ]; then
             echo "setup-memory: WARNING keeping repo copy of '$name' (bridge copy parked as .bridge-backup)" >&2
-            mv "$src" "$BRIDGE/$name.bridge-backup"
+            # Never overwrite a copy parked by an earlier run: pick a free name.
+            backup="$BRIDGE/$name.bridge-backup"
+            n=1
+            while [ -e "$backup" ]; do
+                backup="$BRIDGE/$name.bridge-backup.$n"
+                n=$((n + 1))
+            done
+            mv "$src" "$backup"
         else
             mv "$src" "$dest"
             migrated=$((migrated + 1))

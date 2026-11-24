@@ -70,7 +70,9 @@ echo -e "${BLUE}Required Dependencies:${NC}"
 echo ""
 
 # Core tools
-check_cmd "git" "git" "Install via package manager"
+# `|| true`: check_cmd returns 1 when a tool is missing, and under `set -e` a
+# bare call would abort before the summary. MISSING already records it.
+check_cmd "git" "git" "Install via package manager" || true
 # gptme itself requires Python >=3.11.5 (its pyproject.toml); an older python3
 # would pass a bare existence check and then fail at `pipx install gptme`.
 if check_cmd "python3" "python3" "Install Python 3.11.5+"; then
@@ -129,34 +131,34 @@ echo ""
 
 case $OS in
     macos)
-        check_cmd "tree" "tree" "brew install tree"
-        check_cmd "jq" "jq" "brew install jq"
-        check_cmd "gh" "GitHub CLI" "brew install gh"
-        check_cmd "shellcheck" "shellcheck" "brew install shellcheck"
+        check_cmd "tree" "tree" "brew install tree" || true
+        check_cmd "jq" "jq" "brew install jq" || true
+        check_cmd "gh" "GitHub CLI" "brew install gh" || true
+        check_cmd "shellcheck" "shellcheck" "brew install shellcheck" || true
         ;;
     debian)
-        check_cmd "tree" "tree" "sudo apt install tree"
-        check_cmd "jq" "jq" "sudo apt install jq"
-        check_cmd "gh" "GitHub CLI" "See https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
-        check_cmd "shellcheck" "shellcheck" "sudo apt install shellcheck"
+        check_cmd "tree" "tree" "sudo apt install tree" || true
+        check_cmd "jq" "jq" "sudo apt install jq" || true
+        check_cmd "gh" "GitHub CLI" "See https://github.com/cli/cli/blob/trunk/docs/install_linux.md" || true
+        check_cmd "shellcheck" "shellcheck" "sudo apt install shellcheck" || true
         ;;
     fedora)
-        check_cmd "tree" "tree" "sudo dnf install tree"
-        check_cmd "jq" "jq" "sudo dnf install jq"
-        check_cmd "gh" "GitHub CLI" "sudo dnf install gh"
-        check_cmd "shellcheck" "shellcheck" "sudo dnf install shellcheck"
+        check_cmd "tree" "tree" "sudo dnf install tree" || true
+        check_cmd "jq" "jq" "sudo dnf install jq" || true
+        check_cmd "gh" "GitHub CLI" "sudo dnf install gh" || true
+        check_cmd "shellcheck" "shellcheck" "sudo dnf install shellcheck" || true
         ;;
     arch)
-        check_cmd "tree" "tree" "sudo pacman -S tree"
-        check_cmd "jq" "jq" "sudo pacman -S jq"
-        check_cmd "gh" "GitHub CLI" "sudo pacman -S github-cli"
-        check_cmd "shellcheck" "shellcheck" "sudo pacman -S shellcheck"
+        check_cmd "tree" "tree" "sudo pacman -S tree" || true
+        check_cmd "jq" "jq" "sudo pacman -S jq" || true
+        check_cmd "gh" "GitHub CLI" "sudo pacman -S github-cli" || true
+        check_cmd "shellcheck" "shellcheck" "sudo pacman -S shellcheck" || true
         ;;
     *)
-        check_cmd "tree" "tree" "Install via package manager"
-        check_cmd "jq" "jq" "Install via package manager"
-        check_cmd "gh" "GitHub CLI" "See https://cli.github.com/"
-        check_cmd "shellcheck" "shellcheck" "Install via package manager"
+        check_cmd "tree" "tree" "Install via package manager" || true
+        check_cmd "jq" "jq" "Install via package manager" || true
+        check_cmd "gh" "GitHub CLI" "See https://cli.github.com/" || true
+        check_cmd "shellcheck" "shellcheck" "Install via package manager" || true
         ;;
 esac
 

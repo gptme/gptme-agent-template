@@ -147,6 +147,13 @@ mkdir -p "$(dirname "$TARGET_DIR")"
 # If a name is provided, use it
 # Else, extract agent name from the last directory component, whether it has -agent suffix or not
 NEW_AGENT="${2:-$(basename "$TARGET_DIR" | sed 's/-agent$//')}"
+# The name lands verbatim inside a quoted TOML string (gptme.toml `name = "..."`)
+# and in Markdown, so no escaping is right for both: reject the characters TOML
+# would treat as an escape, a string end, or an invalid control character.
+if [[ -z "$NEW_AGENT" ]] || [[ "$NEW_AGENT" == *[\\\"[:cntrl:]]* ]]; then
+    echo "Error: invalid agent name '$NEW_AGENT': must be non-empty and must not contain a backslash, a double quote, or control characters" >&2
+    exit 1
+fi
 # Name of agent in template, to be replaced
 NAME_TEMPLATE="gptme-agent"
 
@@ -197,8 +204,10 @@ function copy_file() {
         # (e.g. CLI tool references like "gptme-agent create" that should not be renamed)
         perl -i -pe 'BEGIN{undef $/;} s/<!--template-->.*?<!--\/template-->\n?//gs' "$file"
         # Replace template strings in remaining content
-        perl -i -pe "s/${NAME_TEMPLATE}-template/${NEW_AGENT}/g" "$file"
-        perl -i -pe "s/${NAME_TEMPLATE}/${NEW_AGENT}/g" "$file"
+        # Names go through the environment, not the perl source: spliced in,
+        # "/" ended the s/// early and "@x"/"$x" interpolated as variables.
+        NAME_TEMPLATE="$NAME_TEMPLATE" NEW_AGENT="$NEW_AGENT" \
+            perl -i -pe 's/\Q$ENV{NAME_TEMPLATE}\E-template/$ENV{NEW_AGENT}/g; s/\Q$ENV{NAME_TEMPLATE}\E/$ENV{NEW_AGENT}/g' "$file"
         # Collapse 3+ consecutive blank lines to 2 (cleanup after template stripping)
         perl -i -pe 'BEGIN{undef $/;} s/\n{4,}/\n\n\n/gs' "$file"
     done
@@ -385,7 +394,9 @@ fi
 # no-op on a pure-gptme host (no ~/.claude), it creates the Claude Code bridge
 # symlink into memory/ otherwise, so a fresh fork's memory is version-controlled
 # from the start instead of silently landing outside the repo.
-(cd "${TARGET_DIR}" && WORKSPACE="${TARGET_DIR}" scripts/setup-memory.sh) || true
+# WORKSPACE must be absolute: TARGET_DIR may be relative (./name), and inside
+# the subshell it would resolve a second time below the target.
+(cd "${TARGET_DIR}" && WORKSPACE="$(pwd)" scripts/setup-memory.sh) || true
 
 # Create initial setup task from template
 cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
