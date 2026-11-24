@@ -45,10 +45,19 @@ cd "$WORKSPACE"
 mkdir -p "$STATE_DIR/attempts"
 
 # --- Single slot -----------------------------------------------------------
+if ! command -v flock >/dev/null 2>&1; then
+    log "ERROR: flock is required (util-linux); install it and check the service PATH"
+    exit 1
+fi
 exec 9>"$LOCKFILE"
-if ! flock -n 9; then
+SLOT_RC=0
+flock -n -E 75 9 || SLOT_RC=$?
+if [ "$SLOT_RC" -eq 75 ]; then
     log "slot occupied: another agent-message session is running; the retry timer will re-check"
     exit 0
+elif [ "$SLOT_RC" -ne 0 ]; then
+    log "ERROR: flock on $LOCKFILE failed (exit $SLOT_RC); not launching"
+    exit 1
 fi
 
 # --- Discovery -------------------------------------------------------------

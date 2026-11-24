@@ -89,7 +89,12 @@ session can run at the same time. An agent that cannot afford two sessions sets
 takes the scheduled runner's lock (`/tmp/<agent>-autonomous.lock`, override with
 `AGENT_MSG_AUTONOMOUS_LOCKFILE`) for the length of the message session. Both scripts take
 a non-blocking `flock` (util-linux) on that file, so two simultaneous starts cannot both
-win. Without `flock`, the scheduled runner warns and falls back to its PID check:
+win. Both services must have util-linux `flock` on their PATH (including support for
+`-E`); check the PATH configured in each service, not just your interactive shell.
+The scheduled runner exits with an error if `flock` is missing or fails, even with
+`FORCE_SESSION=1`: it never falls back to a non-atomic PID-only check. This dependency
+also applies when single-lane pickup is disabled. On hosts without util-linux `flock`,
+install it before enabling the scheduled Claude runner.
 
 - A scheduled run is active: the script logs `slot occupied` and exits 0 without
   launching or counting an attempt. The retry timer picks the message up afterwards.

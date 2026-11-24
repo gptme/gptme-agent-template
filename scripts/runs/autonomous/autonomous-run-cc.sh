@@ -63,22 +63,22 @@ acquire_lock() {
     # opener never truncates the holder's PID, and never unlink the file: a
     # second runner could flock a fresh inode at the same path. The PID check
     # still refuses a live holder that only wrote a PID (an older runner).
+    # Never fall back to a PID-only check: the inbox service may still have
+    # flock on its PATH, and that mixed protocol would allow simultaneous runs.
+    if ! command -v flock >/dev/null 2>&1; then
+        log "ERROR: flock is required (util-linux); install it and check the service PATH"
+        exit 1
+    fi
     exec 8>>"$LOCKFILE"
     local pid rc=0
-    if command -v flock >/dev/null 2>&1; then
-        flock -n -E 75 8 || rc=$?
-        if [ "$rc" -eq 75 ]; then
-            pid=$(cat "$LOCKFILE" 2>/dev/null || echo "")
-            log "ERROR: Another autonomous run is active (PID ${pid:-unknown})"
-            exit 1
-        elif [ "$rc" -ne 0 ]; then
-            log "ERROR: flock on $LOCKFILE failed (exit $rc), not a held lock"
-            exit 1
-        fi
-    else
-        # No util-linux flock (e.g. macOS): the PID check below is the only guard,
-        # and two simultaneous starts can both pass it.
-        log "WARN: flock not found; falling back to the PID-only lock check"
+    flock -n -E 75 8 || rc=$?
+    if [ "$rc" -eq 75 ]; then
+        pid=$(cat "$LOCKFILE" 2>/dev/null || echo "")
+        log "ERROR: Another autonomous run is active (PID ${pid:-unknown})"
+        exit 1
+    elif [ "$rc" -ne 0 ]; then
+        log "ERROR: flock on $LOCKFILE failed (exit $rc), not a held lock"
+        exit 1
     fi
     pid=$(cat "$LOCKFILE" 2>/dev/null || echo "")
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then

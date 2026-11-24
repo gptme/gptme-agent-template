@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import stat
 import subprocess
 import time
@@ -184,6 +185,28 @@ def test_journal_is_available_with_identity_opt_out(tmp_path: Path) -> None:
     assert journal.is_file()
     assert str(journal) in captured["args"][-1]
     assert "--session-id" not in captured["args"]
+
+
+@pytest.mark.parametrize("force_session", ["0", "1"])
+def test_missing_flock_refuses_run_even_when_budget_gates_are_bypassed(
+    tmp_path: Path, force_session: str
+) -> None:
+    _setup_workspace(tmp_path)
+    # A service PATH without flock, independent of the developer's installation.
+    # These are all the external commands used before lock acquisition.
+    bindir = tmp_path / "bin"
+    for name in ("bash", "dirname", "date", "cat"):
+        executable = shutil.which(name)
+        assert executable
+        (bindir / name).symlink_to(executable)
+    result = _run_result(
+        tmp_path, {"PATH": str(bindir), "FORCE_SESSION": force_session}
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "ERROR: flock is required" in result.stdout
+    assert "autonomous run starting" not in result.stdout
+    assert "Another autonomous run is active" not in result.stdout
+    assert not _lockfile(tmp_path).exists()
 
 
 def test_force_session_bypasses_gates(tmp_path: Path) -> None:

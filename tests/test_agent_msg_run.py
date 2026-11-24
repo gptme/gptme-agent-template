@@ -116,6 +116,23 @@ def test_pending_message_launches_one_session_with_timestamps(tmp_path: Path) ->
     assert MSG in Path(f"{w['launches']}.args").read_text()
 
 
+def test_missing_flock_is_an_error_not_a_busy_slot(tmp_path: Path) -> None:
+    w = _workspace(tmp_path, [MSG])
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    for name in ("bash", "dirname", "date", "mkdir"):
+        executable = shutil.which(name)
+        assert executable
+        (bindir / name).symlink_to(executable)
+    w["env"]["PATH"] = str(bindir)
+    r = _run(w)
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "ERROR: flock is required" in r.stdout
+    assert "slot occupied" not in r.stdout
+    assert _launch_count(w) == 0
+    assert not (tmp_path / "state" / "attempts" / MSG).exists()
+
+
 def test_busy_slot_exits_zero_without_launch(tmp_path: Path) -> None:
     w = _workspace(tmp_path, [MSG])
     ready = tmp_path / "holder.ready"
