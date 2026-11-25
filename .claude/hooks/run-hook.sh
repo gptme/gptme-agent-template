@@ -17,7 +17,9 @@
 #   - --no-block: for advisory hooks (lesson matching, logging). A script exit of 2 becomes 1:
 #     the error stays visible but can never block. TERM, INT and HUP are passed on to the script.
 #
-# Miss log: ${CLAUDE_HOOK_MISS_LOG:-${TMPDIR:-/tmp}/claude-hook-missing.log}
+# Miss log: ${CLAUDE_HOOK_MISS_LOG:-${XDG_STATE_HOME:-$HOME/.local/state}/claude-hooks/missing.log}
+# (per-user, mode 700; never appended through a symlink, so a planted link in a shared
+# directory can't redirect the write)
 
 no_block=0
 if [ "${1:-}" = "--no-block" ]; then
@@ -37,8 +39,15 @@ shift 2
 miss() {
     msg="run-hook.sh: $1; hook skipped"
     echo "$msg" >&2
-    log="${CLAUDE_HOOK_MISS_LOG:-${TMPDIR:-/tmp}/claude-hook-missing.log}"
-    printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$msg" >>"$log" 2>/dev/null || true
+    log="${CLAUDE_HOOK_MISS_LOG:-}"
+    if [ -z "$log" ]; then
+        dir="${XDG_STATE_HOME:-$HOME/.local/state}/claude-hooks"
+        mkdir -p "$dir" 2>/dev/null && chmod 700 "$dir" 2>/dev/null
+        log="$dir/missing.log"
+    fi
+    if [ ! -L "$log" ]; then
+        printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$msg" >>"$log" 2>/dev/null || true
+    fi
     exit 0
 }
 

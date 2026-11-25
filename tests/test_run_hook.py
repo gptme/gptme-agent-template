@@ -207,3 +207,29 @@ def test_no_block_passes_termination_on_to_the_script(tmp_path):
     finally:
         if launcher.poll() is None:
             launcher.kill()
+
+
+def test_default_miss_log_is_per_user(tmp_path):
+    """The default log lives in a private per-user state dir, not shared /tmp."""
+    state = tmp_path / "state"
+    env = {k: v for k, v in os.environ.items() if k != "CLAUDE_HOOK_MISS_LOG"}
+    env["XDG_STATE_HOME"] = str(state)
+    result = subprocess.run(
+        [str(LAUNCHER), "python3", str(tmp_path / "missing.py")],
+        capture_output=True, text=True, env=env,
+    )
+    assert result.returncode == 0
+    log_dir = state / "claude-hooks"
+    assert "hook script not found" in (log_dir / "missing.log").read_text()
+    assert (log_dir.stat().st_mode & 0o777) == 0o700
+
+
+def test_miss_log_is_never_appended_through_a_symlink(tmp_path):
+    """A planted symlink at the log path must not redirect the append."""
+    victim = tmp_path / "victim"
+    victim.write_text("original\n")
+    link = tmp_path / "miss.log"
+    link.symlink_to(victim)
+    result = _run(["python3", str(tmp_path / "missing.py")], tmp_path)
+    assert result.returncode == 0
+    assert victim.read_text() == "original\n"
