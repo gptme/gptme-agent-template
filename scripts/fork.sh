@@ -400,8 +400,11 @@ fi
 # the subshell it would resolve a second time below the target.
 (cd "${TARGET_DIR}" && WORKSPACE="$(pwd)" scripts/setup-memory.sh) || true
 
-# Create initial setup task from template
-cp "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" "${TARGET_DIR}/tasks/"
+# Create initial setup task from template. The copy sits one level above the
+# template, so rewrite its ../../docs/ links to ../docs/ (portable sed, no -i).
+sed 's|](\.\./\.\./docs/|](../docs/|g' \
+    "${TARGET_DIR}/tasks/templates/initial-agent-setup.md" \
+    > "${TARGET_DIR}/tasks/initial-agent-setup.md"
 # Set creation timestamp if gptodo is available (optional tool)
 if command -v gptodo > /dev/null 2>&1; then
     (cd "${TARGET_DIR}" && gptodo edit initial-agent-setup --set created "$(iso_datetime)")
