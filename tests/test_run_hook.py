@@ -216,7 +216,9 @@ def test_default_miss_log_is_per_user(tmp_path):
     env["XDG_STATE_HOME"] = str(state)
     result = subprocess.run(
         [str(LAUNCHER), "python3", str(tmp_path / "missing.py")],
-        capture_output=True, text=True, env=env,
+        capture_output=True,
+        text=True,
+        env=env,
     )
     assert result.returncode == 0
     log_dir = state / "claude-hooks"
