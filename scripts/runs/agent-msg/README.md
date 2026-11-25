@@ -15,7 +15,7 @@ for agent-to-agent messages (see `TOOLS.md`).
 | `agent-msg-run.path.example` | `PathChanged` on `messages/inbox` only: arrival detection |
 | `agent-msg-run.service.example` | oneshot, 3 s pre-scan sleep, runs the script |
 | `agent-msg-run.timer.example` | 2-minute retry for messages that arrived while the slot was busy |
-| `agent-msg-run.sh` | one-slot lock, `gptmail agent pending`, attempt cap, one `claude -p` session |
+| `agent-msg-run.sh` | one-slot lock, `gptmail agent pending`, attempt cap, quota gate, one `claude -p` session |
 
 The units live in `dotfiles/.config/systemd/user/`.
 
@@ -51,6 +51,14 @@ it logs `nothing pending` and exits without starting a model session.
   executed: exit 126/127) does not count toward the cap.
   Without the cap, a handler that decides "no reply needed" and never runs `ack`
   is relaunched at every retry. Handlers must end in `reply` or `ack` (`TOOLS.md`).
+- **Budget.** The inbox forces discovery, not the budget. Before launching, the script
+  runs the same `gptme-contrib/scripts/quota-gate.sh` check as the scheduled runner,
+  for the session's model. A blocked check leaves the messages pending and the attempt
+  counters untouched; the retry timer re-checks. With nothing pending, the gate is not
+  consulted at all. Like the scheduled runner, it fails open when the gate script is
+  missing (`AGENT_MSG_QUOTA_GATE_SCRIPT` overrides the path).
+- **Attribution.** The session runs with `AGENT_DISPATCH_CAUSE={"kind": "inbox", ...}`,
+  which the post-session hook records, so an inbox session is not counted as a timer one.
 - **Shared no-reply policy.** Feeds that never owe a reply belong in
   `messages/no-reply-subject-patterns`, which `gptmail agent pending` reads for every
   caller. Do not set the patterns on this unit's environment only: an interactive
@@ -73,10 +81,63 @@ cases; free slot, launch 8-14 s after the message timestamp (23 messages, median
 about 10 s); behind a busy slot, 81 s. `launched_at` is dispatch, not the first model
 turn, and these are one agent's figures, not a promise.
 
+## Single-lane mode
+
+By default the script has its own lock, so a message session and a scheduled autonomous
+session can run at the same time. An agent that cannot afford two sessions sets
+`AGENT_MSG_SINGLE_LANE=1` (see the commented line in the service unit). The script then
+takes the scheduled runner's lock (`/tmp/<agent>-autonomous.lock`, override with
+`AGENT_MSG_AUTONOMOUS_LOCKFILE`) for the length of the message session. Both scripts take
+a non-blocking `flock` (util-linux) on that file, so two simultaneous starts cannot both
+win. Both services must have util-linux `flock` on their PATH (including support for
+`-E`); check the PATH configured in each service, not just your interactive shell.
+The scheduled runner exits with an error if `flock` is missing or fails, even with
+`FORCE_SESSION=1`: it never falls back to a non-atomic PID-only check. This dependency
+also applies when single-lane pickup is disabled. On hosts without util-linux `flock`,
+install it before enabling the scheduled Claude runner.
+
+- A scheduled run is active: the script logs `slot occupied` and exits 0 without
+  launching or counting an attempt. The retry timer picks the message up afterwards.
+- A message session is active: `autonomous-run-cc.sh` refuses to start, as it does for
+  any live run. Expect that run's unit to log `Another autonomous run is active`.
+- One message session, then exit. It never chains into a scheduled session.
+
+What single-lane mode does **not** do: it does not skip the quota gate, and it does not
+run the scheduled runner's session gate. That gate decides whether there is any trigger
+at all; here the trigger is the pending message itself, as `gptmail agent pending`
+defines it. `autonomous-run.sh` (the gptme runner) has no lock, so single-lane mode gives
+no exclusion against it. A lock path that cannot be opened is a service error, not a
+busy slot.
+
+Do not point `AGENT_MSG_LOCKFILE` at the autonomous lock instead: the script opens that
+file with `>`, which truncates the PID the scheduled runner wrote.
+
+To turn single-lane mode off, remove the `Environment=` line and run
+`systemctl --user daemon-reload`. The kernel releases the flock when a holder exits, and
+a stale PID left by a killed process is replaced by the next run of either script;
+nothing needs cleaning by hand. The lock file itself stays in place by design.
+
+## Disable and remove
+
+```bash
+systemctl --user disable --now agent-msg-run.path agent-msg-run.timer
+systemctl --user stop agent-msg-run.service   # ends a pickup still running
+rm ~/.config/systemd/user/agent-msg-run.{path,service,timer}
+systemctl --user daemon-reload
+rm -rf state/agent-msg   # attempt counters only
+```
+
+Messages keep arriving in `messages/inbox/` and are picked up by the next scheduled run.
+
+## Urgency
+
+Not implemented. Every pending message goes to the same session in one batch, so an
+ordering hint would change nothing here. If an agent adds a `priority: urgent` field,
+it must stay an ordering hint among eligible pending messages: never a way past the
+quota gate, the attempt cap, the locks or any claim.
+
 ## Not in this slice
 
-- Urgency routing and a separate alert directory.
-- A single-lane "force one session" option.
-- A shared priority slot with the scheduled autonomous run: this script has its own
-  lock, so a message session and a scheduled session can overlap. Share one lock file
-  (`AGENT_MSG_LOCKFILE`) if your host cannot afford both.
+- A separate directory for script-generated alerts. Only messages from people and agents
+  should land in `messages/inbox/`; a script that rewrites an unread alert there wakes
+  this unit on every write.

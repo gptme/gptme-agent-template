@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import stat
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -185,6 +187,28 @@ def test_journal_is_available_with_identity_opt_out(tmp_path: Path) -> None:
     assert "--session-id" not in captured["args"]
 
 
+@pytest.mark.parametrize("force_session", ["0", "1"])
+def test_missing_flock_refuses_run_even_when_budget_gates_are_bypassed(
+    tmp_path: Path, force_session: str
+) -> None:
+    _setup_workspace(tmp_path)
+    # A service PATH without flock, independent of the developer's installation.
+    # These are all the external commands used before lock acquisition.
+    bindir = tmp_path / "bin"
+    for name in ("bash", "dirname", "date", "cat"):
+        executable = shutil.which(name)
+        assert executable
+        (bindir / name).symlink_to(executable)
+    result = _run_result(
+        tmp_path, {"PATH": str(bindir), "FORCE_SESSION": force_session}
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "ERROR: flock is required" in result.stdout
+    assert "autonomous run starting" not in result.stdout
+    assert "Another autonomous run is active" not in result.stdout
+    assert not _lockfile(tmp_path).exists()
+
+
 def test_force_session_bypasses_gates(tmp_path: Path) -> None:
     """FORCE_SESSION=1 skips both gate scripts entirely."""
     _setup_workspace(tmp_path)
@@ -256,6 +280,28 @@ def test_refused_run_keeps_live_runs_lock(tmp_path: Path) -> None:
         holder.kill()
         holder.wait()
         lock.unlink(missing_ok=True)
+
+
+def test_run_refused_while_another_process_holds_the_flock(tmp_path: Path) -> None:
+    """Simultaneous start: a holder that has the flock but no PID in the file
+    yet (another runner, or the agent-msg single-lane pickup) still wins."""
+    _setup_workspace(tmp_path)
+    lock = _lockfile(tmp_path)
+    ready = tmp_path / "flock.ready"
+    holder = subprocess.Popen(
+        ["bash", "-c", f'exec 8>>"{lock}"; flock -n 8 && touch "{ready}"; sleep 30']
+    )
+    try:
+        for _ in range(100):
+            if ready.exists():
+                break
+            time.sleep(0.1)
+        assert ready.exists(), "holder never acquired the flock"
+        rc = _run(tmp_path, {"FORCE_SESSION": "1"})
+        assert rc == 1
+    finally:
+        holder.kill()
+        holder.wait()
 
 
 _GIT_ENV = {

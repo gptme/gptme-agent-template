@@ -33,6 +33,11 @@ CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 NAME_LC="${AGENT_NAME,,}"
 STATE_DIR="${AGENT_MSG_STATE_DIR:-$WORKSPACE/state/agent-msg}"
 LOCKFILE="${AGENT_MSG_LOCKFILE:-/tmp/${NAME_LC}-agent-msg.lock}"
+# Single-lane mode (opt-in): share the scheduled autonomous run's lock, so a
+# message session and a scheduled session never overlap. See README.md.
+SINGLE_LANE="${AGENT_MSG_SINGLE_LANE:-0}"
+AUTONOMOUS_LOCKFILE="${AGENT_MSG_AUTONOMOUS_LOCKFILE:-/tmp/${NAME_LC}-autonomous.lock}"
+QUOTA_GATE_SCRIPT="${AGENT_MSG_QUOTA_GATE_SCRIPT:-$WORKSPACE/gptme-contrib/scripts/quota-gate.sh}"
 
 log() { echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] $*"; }
 
@@ -40,10 +45,19 @@ cd "$WORKSPACE"
 mkdir -p "$STATE_DIR/attempts"
 
 # --- Single slot -----------------------------------------------------------
+if ! command -v flock >/dev/null 2>&1; then
+    log "ERROR: flock is required (util-linux); install it and check the service PATH"
+    exit 1
+fi
 exec 9>"$LOCKFILE"
-if ! flock -n 9; then
+SLOT_RC=0
+flock -n -E 75 9 || SLOT_RC=$?
+if [ "$SLOT_RC" -eq 75 ]; then
     log "slot occupied: another agent-message session is running; the retry timer will re-check"
     exit 0
+elif [ "$SLOT_RC" -ne 0 ]; then
+    log "ERROR: flock on $LOCKFILE failed (exit $SLOT_RC); not launching"
+    exit 1
 fi
 
 # --- Discovery -------------------------------------------------------------
@@ -89,8 +103,66 @@ if [ "${#DISPATCH[@]}" -eq 0 ]; then
     exit 0
 fi
 
+# --- Budget gate -----------------------------------------------------------
+# The inbox forces discovery, not the budget: a message session is a paid
+# session like any other, so it passes the same quota gate as the scheduled run
+# (fails open when gptme-contrib is absent, as that runner does). A blocked run
+# leaves the attempt counters alone; the retry timer re-checks.
+if [ -f "$QUOTA_GATE_SCRIPT" ]; then
+    # shellcheck source=/dev/null
+    QUOTA_GATE_LOG_PREFIX="[${NAME_LC}-agent-msg]" \
+    source "$QUOTA_GATE_SCRIPT"
+    if ! quota_gate_check --model "$MODEL"; then
+        log "quota gate blocked: ${#DISPATCH[@]} message(s) stay pending; the retry timer will re-check"
+        exit 0
+    fi
+else
+    log "quota-gate.sh not found at $QUOTA_GATE_SCRIPT; skipping quota gate"
+fi
+
+SYSPROMPT_FILE=""
+OWN_AUTONOMOUS_LOCK=0
+# shellcheck disable=SC2317  # called by the EXIT trap
+cleanup() {
+    [ -n "$SYSPROMPT_FILE" ] && rm -f "$SYSPROMPT_FILE"
+    # Clear only a PID this run wrote, and truncate rather than delete, as
+    # autonomous-run-cc.sh does. Exiting closes fd 8 and releases the flock.
+    if [ "$OWN_AUTONOMOUS_LOCK" -eq 1 ] && [ "$(cat "$AUTONOMOUS_LOCKFILE" 2>/dev/null)" = "$$" ]; then
+        : >"$AUTONOMOUS_LOCKFILE"
+    fi
+}
+trap cleanup EXIT
+
+# --- Single lane (opt-in) --------------------------------------------------
+# Take the same flock as autonomous-run-cc.sh (fd 8, opened with >> so the
+# runner's PID is never truncated). While this session holds it, a scheduled
+# run refuses to start; while a scheduled run holds it, this exits and the
+# retry timer re-checks. One session, no chaining.
+if [ "$SINGLE_LANE" = "1" ]; then
+    if ! { exec 8>>"$AUTONOMOUS_LOCKFILE"; } 2>/dev/null; then
+        log "ERROR: cannot open the autonomous lock $AUTONOMOUS_LOCKFILE; check AGENT_MSG_AUTONOMOUS_LOCKFILE"
+        exit 1
+    fi
+    LANE_RC=0
+    flock -n -E 75 8 || LANE_RC=$?
+    if [ "$LANE_RC" -eq 75 ]; then
+        log "slot occupied: a scheduled autonomous run holds the single lane; the retry timer will re-check"
+        exit 0
+    elif [ "$LANE_RC" -ne 0 ]; then
+        log "ERROR: flock on $AUTONOMOUS_LOCKFILE failed (exit $LANE_RC); not launching"
+        exit 1
+    fi
+    # A live PID without the flock is a runner from before the flock change.
+    holder="$(cat "$AUTONOMOUS_LOCKFILE" 2>/dev/null || true)"
+    if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
+        log "slot occupied: scheduled autonomous run (PID $holder) holds the single lane; the retry timer will re-check"
+        exit 0
+    fi
+    echo $$ >"$AUTONOMOUS_LOCKFILE"
+    OWN_AUTONOMOUS_LOCK=1
+fi
+
 SYSPROMPT_FILE="$(mktemp "/tmp/${NAME_LC}-agent-msg-sysprompt-XXXXXX")"
-trap 'rm -f "$SYSPROMPT_FILE"' EXIT
 if ! "$WORKSPACE/scripts/build-system-prompt.sh" >"$SYSPROMPT_FILE"; then
     log "ERROR: build-system-prompt.sh failed; no session launched and attempt counters unchanged"
     exit 1
@@ -131,16 +203,26 @@ your remit, then end it in exactly one of two ways:
 A message that ends in neither stays pending and is relaunched. Do not start other
 work; this session exists only to handle these messages."
 
+# Attribute the session to its trigger. The post-session hook reads this
+# variable; without it the record cannot tell an inbox session from a timer one.
+if [ -z "${AGENT_DISPATCH_CAUSE:-}" ]; then
+    export AGENT_DISPATCH_CAUSE="{\"kind\": \"inbox\", \"id\": \"${INVOCATION_ID:-$$}\"}"
+fi
+
 unset CLAUDECODE CLAUDE_CODE_ENTRYPOINT 2>/dev/null || true
 
+# `timeout` keeps the lock fds, so killing this script does not free the slot
+# while the session runs; the shim closes them just before exec'ing claude, so
+# a background process the session leaves behind cannot hold a lock forever.
+
 EXIT_CODE=0
-timeout "$SCRIPT_TIMEOUT" "$CLAUDE_BIN" -p \
+timeout "$SCRIPT_TIMEOUT" bash -c 'exec 8>&- 9>&- "$@"' _ "$CLAUDE_BIN" -p \
     --dangerously-skip-permissions \
     --model "$MODEL" \
     --append-system-prompt-file "$SYSPROMPT_FILE" \
     "$PROMPT" </dev/null || EXIT_CODE=$?
 
-# timeout exits 126/127 when it cannot run $CLAUDE_BIN at all (not executable /
+# The shim exits 126/127 when it cannot run $CLAUDE_BIN at all (not executable /
 # not found). No session ran, so those dispatches must not count toward the cap:
 # otherwise a broken install would mark every pending message STUCK.
 if [ "$EXIT_CODE" -eq 126 ] || [ "$EXIT_CODE" -eq 127 ]; then
