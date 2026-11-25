@@ -63,6 +63,20 @@ jobs:
         # without a contrib counterpart.
         python3 scripts/check-symlinks.py test-agent --mode=forked
 
+    - name: Verify forked agent has the hook launcher as an executable regular file
+      run: |
+        # settings.json routes every Claude Code hook through run-hook.sh, so a fork
+        # without it (or with a non-executable copy) would fail every hook call.
+        for agent in test-agent test-agent-named; do
+          f="$agent/.claude/hooks/run-hook.sh"
+          # One test per line: a failing test in the middle of an `&&` chain would not
+          # fail the step under `bash -e`.
+          test -f "$f"
+          test ! -L "$f"
+          test -x "$f"
+          cmp .claude/hooks/run-hook.sh "$f"
+        done
+
     - name: Check template itself has no contrib copies (should be symlinks)
       run: |
         # The template itself should use symlinks for shared contrib scripts.
@@ -88,7 +102,7 @@ jobs:
       # onboarding-path job applies to a created workspace; it lives here so
       # the assertion itself cannot silently rot (the doctor greps it replaced
       # had been dead code).
-      run: uv run --with pytest --with pyyaml pytest tests/test_cc_gates.py tests/test_gptme_gates.py tests/test_check_onboarding_config.py tests/test_onboarding_checkout.py tests/test_task_schema_hook.py tests/test_install_deps.py tests/test_setup_memory.py tests/test_fork_relative_target.py -v
+      run: uv run --with pytest --with pyyaml pytest tests/test_cc_gates.py tests/test_gptme_gates.py tests/test_check_onboarding_config.py tests/test_onboarding_checkout.py tests/test_task_schema_hook.py tests/test_install_deps.py tests/test_setup_memory.py tests/test_fork_relative_target.py tests/test_run_hook.py tests/test_lesson_hook_interpreter.py -v
 
   doctor-check:
     runs-on: ubuntu-latest

@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -23,9 +24,17 @@ def _fake_python(path, label):
     path.chmod(0o755)
 
 
+def _install_hook_files(workspace):
+    hooks = workspace / ".claude/hooks"
+    hooks.mkdir(parents=True)
+    shutil.copy2(ROOT / ".claude/hooks/run-hook.sh", hooks / "run-hook.sh")
+    (hooks / "match-lessons.py").touch()
+
+
 @pytest.mark.parametrize("event", ["UserPromptSubmit", "PreToolUse"])
 def test_lesson_hooks_use_quoted_workspace_venv(tmp_path, event):
     workspace = tmp_path / "agent with spaces"
+    _install_hook_files(workspace)
     _fake_python(workspace / ".venv/bin/python3", "venv")
     (command,) = _hook_commands(event)
     result = subprocess.run(
@@ -43,7 +52,7 @@ def test_lesson_hooks_use_quoted_workspace_venv(tmp_path, event):
 def test_lesson_hooks_fall_back_to_path_python_without_venv(tmp_path, event):
     # A fresh fork set up with install-deps.sh (pipx) has no .venv.
     workspace = tmp_path / "agent with spaces"
-    workspace.mkdir()
+    _install_hook_files(workspace)
     bindir = tmp_path / "bin"
     _fake_python(bindir / "python3", "path")
     (command,) = _hook_commands(event)
